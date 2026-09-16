@@ -3,7 +3,7 @@
  * Plugin Name: Credit Application PDF
  * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.17.4
+ * Version: 1.17.5
  * Author: keithdoesmarketing.com
  * Requires PHP: 7.0
  * Requires Plugins: ninja-forms
@@ -633,6 +633,22 @@ class TFCAP_PDF {
         $line = '';
 
         foreach ($words as $word) {
+            // If single word is longer than max_chars, split it
+            if (mb_strlen($word) > $max_chars) {
+                // Finish current line first
+                if ($line !== '') {
+                    $lines[] = $line;
+                    $line = '';
+                }
+                // Split long word into chunks
+                while (mb_strlen($word) > $max_chars) {
+                    $lines[] = mb_substr($word, 0, $max_chars);
+                    $word = mb_substr($word, $max_chars);
+                }
+                $line = $word;
+                continue;
+            }
+
             $test = $line . ($line ? ' ' : '') . $word;
             if (mb_strlen($test) > $max_chars && $line !== '') {
                 $lines[] = $line;
@@ -671,9 +687,9 @@ class TFCAP_PDF {
     function signatureBox($label, $sig_data) {
         $this->checkPage(200);
         $y = $this->getY();
-        $box_h = 180;
-        $box_w = 450;
-        $box_x = self::MARGIN + 25;
+        $box_h = 200;
+        $box_w = 500;
+        $box_x = self::MARGIN;
 
         $this->text($box_x, $y, $label, 9, [102, 102, 102]);
         $y -= 6;
@@ -815,7 +831,7 @@ class TFCAP_PDF {
             $raw_out .= $out_row;
         }
 
-        // ── Bilinear resize (alpha path only) ─────────────────────────────────
+        // ── Nearest-neighbor resize (alpha path only) ──────────────────────────
         if ( $width > $max_w || $height > $max_h ) {
             $scale   = min( $max_w / $width, $max_h / $height );
             $final_w = (int) floor( $width  * $scale );
@@ -825,37 +841,19 @@ class TFCAP_PDF {
             $resized    = '';
 
             for ( $ry = 0; $ry < $final_h; $ry++ ) {
-                $src_yf = $ry / $scale;
-                $src_y0 = (int) floor($src_yf);
-                $src_y1 = min($src_y0 + 1, $height - 1);
-                $fy = $src_yf - $src_y0;
-
-                $resized .= "\x00"; // filter byte
+                $src_y    = (int) floor( $ry / $scale );
+                $resized .= "\x00"; // filter byte = None for every output row
 
                 for ( $rx = 0; $rx < $final_w; $rx++ ) {
-                    $src_xf = $rx / $scale;
-                    $src_x0 = (int) floor($src_xf);
-                    $src_x1 = min($src_x0 + 1, $width - 1);
-                    $fx = $src_xf - $src_x0;
-
-                    // Bilinear sample from 4 neighbors
-                    for ($c = 0; $c < $channels_out; $c++) {
-                        $v00 = ord($raw_out[$src_y0 * $row_stride + 1 + $src_x0 * $channels_out + $c]);
-                        $v10 = ord($raw_out[$src_y0 * $row_stride + 1 + $src_x1 * $channels_out + $c]);
-                        $v01 = ord($raw_out[$src_y1 * $row_stride + 1 + $src_x0 * $channels_out + $c]);
-                        $v11 = ord($raw_out[$src_y1 * $row_stride + 1 + $src_x1 * $channels_out + $c]);
-
-                        $top = $v00 + ($v10 - $v00) * $fx;
-                        $bot = $v01 + ($v11 - $v01) * $fx;
-                        $val = (int) round($top + ($bot - $top) * $fy);
-                        $resized .= chr(max(0, min(255, $val)));
-                    }
+                    $src_x   = (int) floor( $rx / $scale );
+                    $src_off = $src_y * $row_stride + 1 + $src_x * $channels_out;
+                    $resized .= substr( $raw_out, $src_off, $channels_out );
                 }
             }
 
             $raw_out = $resized;
 
-            error_log( "TFCAP bilinear resize: {$width}x{$height} → {$final_w}x{$final_h} (scale={$scale})" );
+            error_log( "TFCAP resize: {$width}x{$height} → {$final_w}x{$final_h} (scale={$scale})" );
 
         } else {
             $final_w = $width;
