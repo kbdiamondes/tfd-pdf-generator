@@ -324,7 +324,7 @@ function tfcap_get_nff_template() {
     {"id":51,"key":"textbox_51","type":"textbox","label":"Position","order":50,"required":1,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"Director / Secretary"},
     {"id":52,"key":"signature_52","type":"signature","label":"Endorsement Signature","order":51,"required":1,"default":"","label_pos":"above","personally_identifiable":0,"signature_method":"drawn","signature_font":"dancing-script","drawn_placeholder":"Sign here","canvas_width":1000,"canvas_height":400,"pen_color":"#000000","background_color":"#ffffff"},
     {"id":53,"key":"date_53","type":"date","label":"Date","order":52,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"dd/mm/yyyy"},
-    {"id":54,"key":"sectiondiv_54","type":"sectiondiv","label":"9. Directors' Guarantee and Indemnity","order":53,"required":0,"default":"","label_pos":"above","personally_identifiable":0},
+    {"id":54,"key":"sectiondiv_54","type":"sectiondiv","label":"9. Directors\' Guarantee and Indemnity","order":53,"required":0,"default":"","label_pos":"above","personally_identifiable":0},
     {"id":55,"key":"html_55","type":"html","label":"","order":54,"required":0,"default":"<p>In consideration of The Fun Depot agreeing to provide credit terms, we personally guarantee payment of all money owing.</p>","label_pos":"hidden","personally_identifiable":0},
     {"id":56,"key":"html_56","type":"html","label":"","order":55,"required":0,"default":"<h4>Guarantor 1</h4>","label_pos":"hidden","personally_identifiable":0},
     {"id":57,"key":"textbox_57","type":"textbox","label":"Full Name","order":56,"required":0,"default":"","label_pos":"above","personally_identifiable":1,"placeholder":"Guarantor Name"},
@@ -338,7 +338,7 @@ function tfcap_get_nff_template() {
     {"id":65,"key":"textbox_65","type":"textbox","label":"Residential Address","order":64,"required":0,"default":"","label_pos":"above","personally_identifiable":1,"placeholder":"Residential Address"},
     {"id":66,"key":"signature_66","type":"signature","label":"Guarantor 2 Signature","order":65,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"signature_method":"drawn","signature_font":"dancing-script","drawn_placeholder":"Sign here","canvas_width":1000,"canvas_height":400,"pen_color":"#000000","background_color":"#ffffff"},
     {"id":67,"key":"date_67","type":"date","label":"Date","order":66,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"dd/mm/yyyy"},
-    {"id":68,"key":"checkbox_68","type":"checkbox","label":"I/We have read, understood and agree to the Directors' Guarantee","order":67,"required":1,"default":"unchecked","label_pos":"right","personally_identifiable":0,"checked_value":"I / We Agree","unchecked_value":"","checked_calc_value":"1","unchecked_calc_value":"0"},
+    {"id":68,"key":"checkbox_68","type":"checkbox","label":"I/We have read, understood and agree to the Directors\' Guarantee","order":67,"required":1,"default":"unchecked","label_pos":"right","personally_identifiable":0,"checked_value":"I / We Agree","unchecked_value":"","checked_calc_value":"1","unchecked_calc_value":"0"},
     {"id":69,"key":"submit_69","type":"submit","label":"Submit Credit Application","order":68,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"processing_label":"Processing..."}
   ],
   "actions": [
