@@ -3,7 +3,7 @@
  * Plugin Name: Credit Application PDF
  * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.19.5
+ * Version: 1.19.6
  * Author: keithdoesmarketing.com
  * Requires PHP: 7.0
  * Requires Plugins: ninja-forms
@@ -601,8 +601,7 @@ class TFCAP_PDF {
 
     // Measure approximate width of a string in Helvetica Bold at given pt size
     private function measureBold($text, $size) {
-        // Approximate Helvetica Bold character widths (in points at size 1.0)
-        // These are the standard AFM widths for key characters
+        // Helvetica Bold AFM character widths at 10pt scale (divide by 10 to get per-pt)
         $widths = [
             ' '=>2.78,'!'=>2.78,'"'=>3.55,'#'=>5.56,'$'=>5.56,'%'=>8.89,
             '&'=>7.22,'\''=>2.22,'('=>3.33,')'=>3.33,'*'=>3.89,'+'=>5.84,
@@ -624,9 +623,10 @@ class TFCAP_PDF {
         $w = 0;
         for ($i = 0; $i < mb_strlen($text); $i++) {
             $ch = mb_substr($text, $i, 1);
-            $w += isset($widths[$ch]) ? $widths[$ch] : 5.56; // default ~avg
+            $w += isset($widths[$ch]) ? $widths[$ch] : 5.56;
         }
-        return $w * $size;
+        // widths are at 10pt scale — divide by 10, then multiply by actual size
+        return $w * $size / 10;
     }
 
     function fieldRow($label, $value, $label_w = 0) {
@@ -634,7 +634,6 @@ class TFCAP_PDF {
         $y = $this->getY();
         $line_h = 12;
         $full_w = self::PAGE_W - 2 * self::MARGIN;
-        // If no label_w given, measure and use 55% max
         if ($label_w <= 0) {
             $measured = $this->measureBold($label, 9);
             $label_w = min($full_w * 0.58, $measured + 12);
@@ -1500,12 +1499,15 @@ function tfcap_generate_pdf($form_data) {
         $pdf->checkbox("I/We have read, understood and agree to the Directors' Guarantee", $guarantee_checked);
 
         // FOOTER
-        $pdf->checkPage(40);
-        $y = $pdf->getY() - 10;
-        $pdf->line(TFCAP_PDF::MARGIN, $y, TFCAP_PDF::PAGE_W - TFCAP_PDF::MARGIN, $y, 0.5, [200, 200, 200]);
+        $pdf->checkPage(60);
+        // Draw divider line
+        $pdf->line(TFCAP_PDF::MARGIN, $pdf->getY() - 4, TFCAP_PDF::PAGE_W - TFCAP_PDF::MARGIN, $pdf->getY() - 4, 0.5, [200, 200, 200]);
+        // Move below the line, then render note and footer text
+        $pdf->setY($pdf->getY() - 18);
         $pdf->note('Please email the completed and signed application to bookings@thefundepot.com.au. If any section does not apply, please write "N/A" rather than leaving it blank. We will confirm your approved credit terms in writing before they take effect.');
-        $pdf->text(TFCAP_PDF::MARGIN, $y - 24, 'The Fun Depot™ | ABN 63 667 911 944 | perthbouncycastlehire.com.au', 8, [102, 102, 102]);
-        $pdf->text(TFCAP_PDF::MARGIN, $y - 34, 'Generated ' . date('d/m/Y \a\t g:i A') . ' | Credit Application — ' . $company, 8, [102, 102, 102]);
+        $y_footer = $pdf->getY();
+        $pdf->text(TFCAP_PDF::MARGIN, $y_footer - 4, 'The Fun Depot(TM) | ABN 63 667 911 944 | perthbouncycastlehire.com.au', 8, [102, 102, 102]);
+        $pdf->text(TFCAP_PDF::MARGIN, $y_footer - 14, 'Generated ' . date('d/m/Y \\a\\t g:i A') . ' | Credit Application - ' . $company, 8, [102, 102, 102]);
 
         // Save
         $result = file_put_contents($filepath, $pdf->build());
