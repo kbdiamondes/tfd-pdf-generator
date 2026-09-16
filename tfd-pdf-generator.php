@@ -271,7 +271,8 @@ function tfcap_get_nff_template() {
     "honeypot": 0
   },
   "fields": [
-    {"id":1,"key":"sectiondiv_1","type":"sectiondiv","label":"1. Applicant Details","order":0,"required":0,"default":"","label_pos":"above","personally_identifiable":0},
+    {"id":70,"key":"html_70","type":"html","label":"","order":0,"required":0,"default":"<p>This application allows approved customers to pay after their event, within 30 days of the invoice date, instead of paying in full before the event. Please complete every section, sign where indicated, and return by email to bookings@thefundepot.com.au. Incomplete applications cannot be processed.</p>","label_pos":"hidden","personally_identifiable":0},
+    {"id":1,"key":"sectiondiv_1","type":"sectiondiv","label":"1. Applicant Details","order":1,"required":0,"default":"","label_pos":"above","personally_identifiable":0},
     {"id":2,"key":"textbox_2","type":"textbox","label":"Applicant\'s Full Name / Company Name","order":1,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"Full Name or Company Name"},
     {"id":3,"key":"textbox_3","type":"textbox","label":"A.C.N. (if a company)","order":2,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"A.C.N."},
     {"id":4,"key":"textbox_4","type":"textbox","label":"A.B.N.","order":3,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"A.B.N."},
@@ -339,7 +340,17 @@ function tfcap_get_nff_template() {
     {"id":66,"key":"signature_66","type":"signature","label":"Guarantor 2 Signature","order":65,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"signature_method":"drawn","signature_font":"dancing-script","drawn_placeholder":"Sign here","canvas_width":1000,"canvas_height":400,"pen_color":"#000000","background_color":"#ffffff"},
     {"id":67,"key":"date_67","type":"date","label":"Date","order":66,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"dd/mm/yyyy"},
     {"id":68,"key":"checkbox_68","type":"checkbox","label":"I/We have read, understood and agree to the Directors\' Guarantee","order":67,"required":1,"default":"unchecked","label_pos":"right","personally_identifiable":0,"checked_value":"I / We Agree","unchecked_value":"","checked_calc_value":"1","unchecked_calc_value":"0"},
-    {"id":69,"key":"submit_69","type":"submit","label":"Submit Credit Application","order":68,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"processing_label":"Processing..."}
+    {"id":71,"key":"html_71","type":"html","label":"","order":68,"required":0,"default":"<p>Please email the completed and signed application to bookings@thefundepot.com.au. If any section does not apply, please write &quot;N/A&quot; rather than leaving it blank. We will confirm your approved credit terms in writing before they take effect.</p>","label_pos":"hidden","personally_identifiable":0},
+    {"id":72,"key":"sectiondiv_72","type":"sectiondiv","label":"THE FUN DEPOT \\u2014 OFFICE USE ONLY","order":69,"required":0,"default":"","label_pos":"above","personally_identifiable":0},
+    {"id":73,"key":"textbox_73","type":"textbox","label":"Date Received","order":70,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"dd/mm/yyyy"},
+    {"id":74,"key":"textbox_74","type":"textbox","label":"Administration Check By","order":71,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"Name"},
+    {"id":75,"key":"textbox_75","type":"textbox","label":"Approved By","order":72,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"Name"},
+    {"id":76,"key":"textbox_76","type":"textbox","label":"Approval Date","order":73,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"dd/mm/yyyy"},
+    {"id":77,"key":"textbox_77","type":"textbox","label":"Signature of Approver","order":74,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"Signature"},
+    {"id":78,"key":"textbox_78","type":"textbox","label":"Account Name","order":75,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"Account Name"},
+    {"id":79,"key":"textbox_79","type":"textbox","label":"Approval Letter Sent (Email/Post + Date)","order":76,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"e.g. Email 16/09/2026"},
+    {"id":80,"key":"textbox_80","type":"textbox","label":"Customer Managed By","order":77,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"Name"},
+    {"id":81,"key":"submit_81","type":"submit","label":"Submit Credit Application","order":78,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"processing_label":"Processing..."}
   ],
   "actions": [
     {"type":"save","label":"Save Form Submission","active":true},
