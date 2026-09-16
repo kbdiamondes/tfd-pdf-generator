@@ -112,16 +112,6 @@ Paste this into the browser console on the credit application form page. It fill
   const cb382 = document.getElementById('nf-field-382');
   if (cb382 && !cb382.checked) { cb382.click(); filled++; }
 
-  // ── OFFICE USE ONLY ────────────────────────────────────────
-  setVal('nf-field-385', '16/09/2026');                    filled++;  // Date Received
-  setVal('nf-field-386', 'Keith');                         filled++;  // Admin Check By
-  setVal('nf-field-387', 'Keith');                         filled++;  // Approved By
-  setVal('nf-field-388', '16/09/2026');                    filled++;  // Approval Date
-  setVal('nf-field-389', 'Keith');                         filled++;  // Signature of Approver
-  setVal('nf-field-390', 'Perth Party Supplies Pty Ltd');  filled++;  // Account Name
-  setVal('nf-field-391', 'Email 16/09/2026');              filled++;  // Approval Letter Sent
-  setVal('nf-field-392', 'Keith');                         filled++;  // Customer Managed By
-
   // ── SIGNATURES — draw mock cursive ─────────────────────────
   function drawSig(canvasId) {
     const canvas = document.getElementById(canvasId);
