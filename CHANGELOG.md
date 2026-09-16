@@ -1,5 +1,11 @@
 # TFD Credit Application PDF Generator — Changelog
 
+## v1.17.1 (2026-09-16)
+- Fixed broken WP native updater — removed Update URI header that caused silent failures
+- "Update Now" button now runs a reliable manual update via AJAX (download → extract → replace)
+- Added backup of current plugin before replacing (auto-restores if update fails)
+- Removed `pre_set_site_transient_update_plugins` and `plugins_api` filters (replaced by manual update)
+
 ## v1.17.0 (2026-09-16)
 - Fixed text overlap in PDF — twoColField now truncates values that exceed column width
 - Fixed signature rendering — added white background behind signature images to prevent fading on transparent PNGs

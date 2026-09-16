@@ -3,53 +3,20 @@
  * Plugin Name: Credit Application PDF
  * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.17.0
+ * Version: 1.17.1
  * Author: keithdoesmarketing.com
  * Requires PHP: 7.0
  * Requires Plugins: ninja-forms
- * Update URI: https://github.com/kbdiamondes/tfd-pdf-generator
  */
 
 if (!defined('ABSPATH')) exit;
 
 // ============================================================
-// GITHUB AUTO-UPDATER
+// GITHUB AUTO-UPDATER (manual via settings page)
 // ============================================================
-add_filter('pre_set_site_transient_update_plugins', function($transient) {
-    $plugin_file = plugin_basename(__FILE__);
-    $remote = tfcap_check_github_update();
-    if ($remote && version_compare($remote['version'], tfcap_get_version(), '>')) {
-        $transient->response[$plugin_file] = (object) [
-            'slug'        => dirname($plugin_file),
-            'url'         => $remote['url'],
-            'package'     => $remote['zip_url'],
-            'new_version' => $remote['version'],
-            'requires'    => '6.0',
-            'requires_php'=> '7.0',
-        ];
-    }
-    return $transient;
-});
-
-add_filter('plugins_api', function($result, $action, $args) {
-    if ($action !== 'plugin_information') return $result;
-    if (!isset($args->slug) || $args->slug !== dirname(plugin_basename(__FILE__))) return $result;
-
-    $remote = tfcap_check_github_update();
-    if (!$remote) return $result;
-
-    return (object) [
-        'name'          => 'Credit Application PDF',
-        'slug'          => dirname(plugin_basename(__FILE__)),
-        'version'       => $remote['version'],
-        'requires'      => '6.0',
-        'requires_php'  => '7.0',
-        'author'        => 'keithdoesmarketing.com',
-        'homepage'      => $remote['url'],
-        'sections'      => ['changelog' => $remote['notes']],
-        'download_link' => $remote['zip_url'],
-    ];
-}, 10, 3);
+// Removed pre_set_site_transient_update_plugins — it caused WP native updater to
+// show a broken "Update now" link that redirects to plugins page without updating.
+// Updates now happen via the "Update Now" button on the plugin settings page.
 
 add_filter('upgrader_source_selection', function($source, $remote_source, $upgrader_object) {
     // GitHub zips extract to repo-branch/, rename to plugin folder
@@ -161,6 +128,99 @@ add_action('wp_ajax_tfcap_check_version', function() {
     } else {
         wp_send_json_success(['status' => 'up_to_date', 'current' => $current]);
     }
+});
+
+// ============================================================
+// MANUAL UPDATE HANDLER — downloads zip, extracts, replaces plugin
+// ============================================================
+add_action('wp_ajax_tfcap_run_update', function() {
+    check_ajax_referer('tfcap_run_update', 'nonce');
+
+    if (!current_user_can('update_plugins')) {
+        wp_send_json_success(['status' => 'error', 'message' => 'Insufficient permissions.']);
+    }
+
+    $version = isset($_POST['version']) ? sanitize_text_field($_POST['version']) : '';
+    if (!$version) {
+        wp_send_json_success(['status' => 'error', 'message' => 'No version specified.']);
+    }
+
+    $zip_url = "https://api.github.com/repos/kbdiamondes/tfd-pdf-generator/zipball/v{$version}";
+    $plugin_dir = plugin_dir_path(__FILE__);
+    $plugin_slug = dirname(plugin_basename(__FILE__));
+
+    // Download zip
+    $args = ['timeout' => 60, 'headers' => ['Accept' => 'application/vnd.github.v3+json']];
+    if (defined('TFCAP_GITHUB_TOKEN') && TFCAP_GITHUB_TOKEN) {
+        $args['headers']['Authorization'] = 'token ' . TFCAP_GITHUB_TOKEN;
+    }
+    $response = wp_remote_get($zip_url, $args);
+    if (is_wp_error($response)) {
+        wp_send_json_success(['status' => 'error', 'message' => 'Download failed: ' . $response->get_error_message()]);
+    }
+    $code = wp_remote_retrieve_response_code($response);
+    if ($code !== 200) {
+        wp_send_json_success(['status' => 'error', 'message' => 'Download failed (HTTP ' . $code . ').']);
+    }
+
+    // Save zip to temp file
+    $tmp_zip = wp_tempnam('tfcap_update_');
+    file_put_contents($tmp_zip, wp_remote_retrieve_body($response));
+
+    // Extract to temp dir
+    $tmp_dir = $tmp_zip . '_extracted';
+    if (!@mkdir($tmp_dir, 0755, true)) {
+        @unlink($tmp_zip);
+        wp_send_json_success(['status' => 'error', 'message' => 'Could not create temp directory.']);
+    }
+
+    $zip = new ZipArchive();
+    if ($zip->open($tmp_zip) !== true) {
+        @unlink($tmp_zip);
+        @rmdir($tmp_dir);
+        wp_send_json_success(['status' => 'error', 'message' => 'Could not open zip: ' . $zip->getStatusString()]);
+    }
+    $zip->extractTo($tmp_dir);
+    $zip->close();
+    @unlink($tmp_zip);
+
+    // Find extracted folder (GitHub names it repo-hash/)
+    $extracted_dirs = array_filter(glob($tmp_dir . '/*'), 'is_dir');
+    if (empty($extracted_dirs)) {
+        @rmdir($tmp_dir);
+        wp_send_json_success(['status' => 'error', 'message' => 'Zip was empty.']);
+    }
+    $extracted = reset($extracted_dirs);
+
+    // Verify it contains the plugin file
+    if (!file_exists($extracted . '/tfd-pdf-generator.php')) {
+        @unlink($tmp_zip);
+        @rmdir($tmp_dir);
+        wp_send_json_success(['status' => 'error', 'message' => 'Invalid plugin zip — missing tfd-pdf-generator.php']);
+    }
+
+    // Move current plugin to backup
+    $backup_dir = $plugin_dir . '../tfd-pdf-generator-backup-' . time();
+    if (!@rename($plugin_dir, $backup_dir)) {
+        @rmdir($tmp_dir);
+        wp_send_json_success(['status' => 'error', 'message' => 'Could not backup current plugin.']);
+    }
+
+    // Move new version into place
+    if (!@rename($extracted, $plugin_dir)) {
+        // Try to restore backup
+        @rename($backup_dir, $plugin_dir);
+        @rmdir($tmp_dir);
+        wp_send_json_success(['status' => 'error', 'message' => 'Could not install new version.']);
+    }
+
+    // Cleanup
+    @rmdir($tmp_dir);
+
+    // Clear cache
+    delete_transient('tfcap_github_update');
+
+    wp_send_json_success(['status' => 'success', 'message' => "Updated to v{$version}"]);
 });
 
 // ============================================================
@@ -1278,7 +1338,9 @@ function tfcap_render_settings_page() {
             </div>
             <div>
                 <?php if ($has_update) : ?>
-                    <a href="<?php echo esc_url(admin_url('plugins.php')); ?>" class="tfcap-version-btn primary">Update Now</a>
+                    <button type="button" id="tfcap-update-btn" class="tfcap-version-btn primary" onclick="tfcapRunUpdate('<?php echo esc_attr($latest_version); ?>')">
+                        Update Now
+                    </button>
                 <?php endif; ?>
                 <button type="button" id="tfcap-check-btn" class="tfcap-version-btn secondary" onclick="tfcapCheckVersion()">
                     <span id="tfcap-check-icon">&#8635;</span> Check for Updates
@@ -1298,9 +1360,32 @@ function tfcap_render_settings_page() {
                 if(!r||!r.data){bar.className='tfcap-version-bar error';bar.querySelector('div:first-child').innerHTML='<strong>Error</strong> Could not check for updates.';return;}
                 var d=r.data;
                 if(d.status==='up_to_date'){bar.className='tfcap-version-bar up-to-date';bar.querySelector('div:first-child').innerHTML='<strong>Plugin Version</strong> <span class="tfcap-version-badge current">v'+d.current+'</span> <span style="margin-left:8px;opacity:.7">&#10003; Up to date</span>';}
-                else if(d.status==='update_available'){bar.className='tfcap-version-bar update-available';bar.querySelector('div:first-child').innerHTML='<strong>Plugin Version</strong> <span class="tfcap-version-badge current">v'+d.current+'</span> <span style="margin:0 4px">&rarr;</span> <span class="tfcap-version-badge latest">v'+d.latest+' available</span>'+(d.release_notes?'<div class="tfcap-version-notes">'+d.release_notes+'</div>':'')+'<div style="margin-top:8px"><a href="<?php echo esc_url(admin_url("plugins.php")); ?>" class="tfcap-version-btn primary">Update Now</a></div>';}
+                else if(d.status==='update_available'){bar.className='tfcap-version-bar update-available';bar.querySelector('div:first-child').innerHTML='<strong>Plugin Version</strong> <span class="tfcap-version-badge current">v'+d.current+'</span> <span style="margin:0 4px">&rarr;</span> <span class="tfcap-version-badge latest">v'+d.latest+' available</span>'+(d.release_notes?'<div class="tfcap-version-notes">'+d.release_notes+'</div>':'')+'<div style="margin-top:8px"><button type="button" class="tfcap-version-btn primary" onclick="tfcapRunUpdate(\''+d.latest+'\')">Update Now</button></div>';}
                 else{bar.className='tfcap-version-bar error';bar.querySelector('div:first-child').innerHTML='<strong>Error</strong> '+(d.message||'Could not check for updates.');}
             }).fail(function(){btn.disabled=false;icon.innerHTML='&#8635;';bar.className='tfcap-version-bar error';bar.querySelector('div:first-child').innerHTML='<strong>Error</strong> Request failed.';});
+        }
+        function tfcapRunUpdate(version){
+            if(!confirm('Update plugin to v'+version+'? The page will reload when done.'))return;
+            var bar=document.getElementById('tfcap-version-bar'),
+                btn=document.getElementById('tfcap-update-btn');
+            btn.disabled=true;btn.innerHTML='<span class="tfcap-version-spinner"></span> Updating...';
+            bar.className='tfcap-version-bar checking';
+            bar.querySelector('div:first-child').innerHTML='<strong>Downloading and installing v'+version+'...</strong>';
+            jQuery.post(ajaxurl,{action:'tfcap_run_update',version:version,nonce:'<?php echo wp_create_nonce('tfcap_run_update'); ?>'},function(r){
+                if(r&&r.data&&r.data.status==='success'){
+                    bar.className='tfcap-version-bar up-to-date';
+                    bar.querySelector('div:first-child').innerHTML='<strong>Updated to v'+version+'!</strong> Reloading...';
+                    setTimeout(function(){location.reload();},1500);
+                }else{
+                    bar.className='tfcap-version-bar error';
+                    bar.querySelector('div:first-child').innerHTML='<strong>Update failed</strong> '+(r&&r.data&&r.data.message||'Unknown error. Try downloading from GitHub manually.');
+                    btn.disabled=false;btn.innerHTML='Update Now';
+                }
+            }).fail(function(){
+                bar.className='tfcap-version-bar error';
+                bar.querySelector('div:first-child').innerHTML='<strong>Update failed</strong> Request error.';
+                btn.disabled=false;btn.innerHTML='Update Now';
+            });
         }
         </script>
 
