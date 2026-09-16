@@ -1,5 +1,11 @@
 # TFD Credit Application PDF Generator — Changelog
 
+## v1.18.1 (2026-09-16)
+- Fixed text overlap — fieldRow now uses dynamic label width based on actual label length
+- Fixed twoColField — both columns now use dynamic label widths
+- Fixed Terms wrapping — numbered terms now wrap properly using wrapText()
+- Terms now display correctly even with long legal text
+
 ## v1.18.0 (2026-09-16)
 - Restored ALL content from Word document to match original form exactly
 - Section 1: Full labels ("Applicant's Full Name / Company Name", "A.C.N. (if a company)")

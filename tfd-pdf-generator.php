@@ -3,7 +3,7 @@
  * Plugin Name: Credit Application PDF
  * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.18.0
+ * Version: 1.18.1
  * Author: keithdoesmarketing.com
  * Requires PHP: 7.0
  * Requires Plugins: ninja-forms
@@ -583,7 +583,13 @@ class TFCAP_PDF {
         $this->checkPage(14);
         $y = $this->getY();
         $line_h = 12;
-        $val_x = self::MARGIN + $label_w;
+        // Dynamic label width — measure label and add padding
+        $label_chars = mb_strlen($label);
+        $label_pt_per_char = 9 * 0.52; // 9pt bold
+        $dynamic_label_w = $label_chars * $label_pt_per_char + 10;
+        // Use whichever is wider: parameter or dynamic
+        $actual_label_w = max($label_w, $dynamic_label_w);
+        $val_x = self::MARGIN + $actual_label_w;
         $val_max = self::PAGE_W - self::MARGIN - $val_x;
         $lines = $this->wrapText($value ?: '—', $val_max, 10);
         $this->text(self::MARGIN, $y, $label, 9, [51, 51, 51], 'B');
@@ -599,8 +605,13 @@ class TFCAP_PDF {
         $mid = self::PAGE_W / 2;
         $line_h = 12;
 
+        // Dynamic label widths — measure labels and add padding
+        $label_pt_per_char = 9 * 0.52; // 9pt bold
+        $val1_offset = max(100, mb_strlen($label1) * $label_pt_per_char + 10);
+        $val2_offset = max(100, mb_strlen($label2) * $label_pt_per_char + 10);
+
         // Column 1
-        $val1_x = self::MARGIN + 100;
+        $val1_x = self::MARGIN + $val1_offset;
         $val1_max = $mid - $val1_x - 8;
         $lines1 = $this->wrapText($value1 ?: '—', $val1_max, 10);
         $this->text(self::MARGIN, $y, $label1, 9, [51, 51, 51], 'B');
@@ -609,7 +620,7 @@ class TFCAP_PDF {
         }
 
         // Column 2
-        $val2_x = $mid + 100;
+        $val2_x = $mid + $val2_offset;
         $val2_max = self::PAGE_W - self::MARGIN - $val2_x;
         $lines2 = $this->wrapText($value2 ?: '—', $val2_max, 10);
         $this->text($mid, $y, $label2, 9, [51, 51, 51], 'B');
@@ -1260,10 +1271,14 @@ function tfcap_generate_pdf($form_data) {
             'I certify that I am duly authorised to sign this application on behalf of the applicant.',
         ];
         foreach ($terms as $i => $t) {
-            $pdf->checkPage(12);
+            $term_text = ($i + 1) . '. ' . $t;
+            $pdf->checkPage(24);
             $y = $pdf->getY();
-            $pdf->text(TFCAP_PDF::MARGIN + 10, $y, ($i + 1) . '. ' . $t, 9, [68, 68, 68]);
-            $pdf->setY($y - 11);
+            $lines = $pdf->wrapText($term_text, TFCAP_PDF::PAGE_W - 2 * TFCAP_PDF::MARGIN - 10, 9);
+            foreach ($lines as $li => $l) {
+                $pdf->text(TFCAP_PDF::MARGIN + 10, $y - ($li * 11), $l, 9, [68, 68, 68]);
+            }
+            $pdf->setY($y - (count($lines) * 11));
         }
         $terms_checked = (tfcap_by_key($fields, 'checkbox_47') === '1');
         $pdf->checkbox('I/We have read, understood and agree to the above: I / We Agree', $terms_checked);
