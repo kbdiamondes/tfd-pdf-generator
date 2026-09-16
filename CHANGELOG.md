@@ -1,5 +1,10 @@
 # TFD Credit Application PDF Generator — Changelog
 
+## v1.17.3 (2026-09-16)
+- Added word wrapping to twoColField — long values now wrap instead of overlapping
+- Added word wrapping to fieldRow — consistent handling across all field types
+- Wrapped lines properly adjust Y position to prevent vertical overlap
+
 ## v1.17.2 (2026-09-16)
 - Fixed header overlap — reduced title font size from 18pt to 15pt, adjusted right column position
 - Removed text truncation — emails and addresses now display in full

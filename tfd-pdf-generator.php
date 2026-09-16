@@ -3,7 +3,7 @@
  * Plugin Name: Credit Application PDF
  * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.17.2
+ * Version: 1.17.3
  * Author: keithdoesmarketing.com
  * Requires PHP: 7.0
  * Requires Plugins: ninja-forms
@@ -582,22 +582,67 @@ class TFCAP_PDF {
     function fieldRow($label, $value, $label_w = 150) {
         $this->checkPage(14);
         $y = $this->getY();
+        $line_h = 12;
+        $val_x = self::MARGIN + $label_w;
+        $val_max = self::PAGE_W - self::MARGIN - $val_x;
+        $lines = $this->wrapText($value ?: '—', $val_max, 10);
         $this->text(self::MARGIN, $y, $label, 9, [51, 51, 51], 'B');
-        $this->text(self::MARGIN + $label_w, $y, $value ?: '—', 10, [26, 26, 26]);
-        $this->setY($y - 14);
+        foreach ($lines as $i => $l) {
+            $this->text($val_x, $y - ($i * $line_h), $l, 10, [26, 26, 26]);
+        }
+        $this->setY($y - (count($lines) * $line_h));
     }
 
     function twoColField($label1, $value1, $label2, $value2) {
         $this->checkPage(14);
         $y = $this->getY();
         $mid = self::PAGE_W / 2;
+        $line_h = 12;
+
+        // Column 1
         $val1_x = self::MARGIN + 100;
-        $val2_x = $mid + 100;
+        $val1_max = $mid - $val1_x - 8;
+        $lines1 = $this->wrapText($value1 ?: '—', $val1_max, 10);
         $this->text(self::MARGIN, $y, $label1, 9, [51, 51, 51], 'B');
-        $this->text($val1_x, $y, $value1 ?: '—', 10, [26, 26, 26]);
+        foreach ($lines1 as $i => $l) {
+            $this->text($val1_x, $y - ($i * $line_h), $l, 10, [26, 26, 26]);
+        }
+
+        // Column 2
+        $val2_x = $mid + 100;
+        $val2_max = self::PAGE_W - self::MARGIN - $val2_x;
+        $lines2 = $this->wrapText($value2 ?: '—', $val2_max, 10);
         $this->text($mid, $y, $label2, 9, [51, 51, 51], 'B');
-        $this->text($val2_x, $y, $value2 ?: '—', 10, [26, 26, 26]);
-        $this->setY($y - 14);
+        foreach ($lines2 as $i => $l) {
+            $this->text($val2_x, $y - ($i * $line_h), $l, 10, [26, 26, 26]);
+        }
+
+        $max_lines = max(count($lines1), count($lines2));
+        $this->setY($y - ($max_lines * $line_h));
+    }
+
+    // Wrap text to fit within $max_w points
+    private function wrapText($text, $max_w, $size = 10) {
+        if (!$text) return ['—'];
+        $pt_per_char = $size * 0.52;
+        $max_chars = (int)floor($max_w / $pt_per_char);
+        if ($max_chars < 10) $max_chars = 10;
+
+        $words = explode(' ', $text);
+        $lines = [];
+        $line = '';
+
+        foreach ($words as $word) {
+            $test = $line . ($line ? ' ' : '') . $word;
+            if (mb_strlen($test) > $max_chars && $line !== '') {
+                $lines[] = $line;
+                $line = $word;
+            } else {
+                $line = $test;
+            }
+        }
+        if ($line) $lines[] = $line;
+        return $lines ?: ['—'];
     }
 
     function note($text) {
