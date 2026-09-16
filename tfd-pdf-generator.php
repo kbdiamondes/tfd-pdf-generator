@@ -3,9 +3,9 @@
  * Plugin Name: Credit Application PDF
  * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.16.0
+ * Version: 1.16.1
  * Author: keithdoesmarketing.com
- * Requires PHP: 7.4
+ * Requires PHP: 7.0
  * Requires Plugins: ninja-forms
  * Update URI: https://github.com/kbdiamondes/tfd-pdf-generator
  */
@@ -24,8 +24,8 @@ add_filter('pre_set_site_transient_update_plugins', function($transient) {
             'url'         => $remote['url'],
             'package'     => $remote['zip_url'],
             'new_version' => $remote['version'],
-            'requires'    => '7.4',
-            'requires_php'=> '7.4',
+            'requires'    => '6.0',
+            'requires_php'=> '7.0',
         ];
     }
     return $transient;
@@ -42,8 +42,8 @@ add_filter('plugins_api', function($result, $action, $args) {
         'name'          => 'Credit Application PDF',
         'slug'          => dirname(plugin_basename(__FILE__)),
         'version'       => $remote['version'],
-        'requires'      => '7.4',
-        'requires_php'  => '7.4',
+        'requires'      => '6.0',
+        'requires_php'  => '7.0',
         'author'        => 'keithdoesmarketing.com',
         'homepage'      => $remote['url'],
         'sections'      => ['changelog' => $remote['notes']],

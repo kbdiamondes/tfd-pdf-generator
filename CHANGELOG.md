@@ -1,5 +1,8 @@
 # TFD Credit Application PDF Generator — Changelog
 
+## v1.16.1 (2026-09-16)
+- Lowered PHP requirement from 7.4 to 7.0 for wider compatibility
+
 ## v1.16.0 (2026-09-16)
 - Added "From Email" setting to fix email delivery failures (SPF)
 - Forces Ninja Forms emails to send from a domain email instead of Gmail
