@@ -3,7 +3,7 @@
  * Plugin Name: Credit Application PDF
  * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.19.4
+ * Version: 1.19.5
  * Author: keithdoesmarketing.com
  * Requires PHP: 7.0
  * Requires Plugins: ninja-forms
@@ -599,17 +599,47 @@ class TFCAP_PDF {
         $this->setY($y - 14);
     }
 
-    function fieldRow($label, $value, $label_w = 150) {
+    // Measure approximate width of a string in Helvetica Bold at given pt size
+    private function measureBold($text, $size) {
+        // Approximate Helvetica Bold character widths (in points at size 1.0)
+        // These are the standard AFM widths for key characters
+        $widths = [
+            ' '=>2.78,'!'=>2.78,'"'=>3.55,'#'=>5.56,'$'=>5.56,'%'=>8.89,
+            '&'=>7.22,'\''=>2.22,'('=>3.33,')'=>3.33,'*'=>3.89,'+'=>5.84,
+            ','=>2.78,'-'=>3.33,'.'=>2.78,'/'=>3.33,'0'=>5.56,'1'=>5.56,
+            '2'=>5.56,'3'=>5.56,'4'=>5.56,'5'=>5.56,'6'=>5.56,'7'=>5.56,
+            '8'=>5.56,'9'=>5.56,':'=>2.78,';'=>2.78,'<'=>5.84,'='=>5.84,
+            '>'=>5.84,'?'=>5.56,'@'=>7.37,'A'=>6.67,'B'=>6.67,'C'=>7.22,
+            'D'=>7.22,'E'=>6.67,'F'=>6.11,'G'=>7.78,'H'=>7.22,'I'=>2.78,
+            'J'=>5.56,'K'=>7.22,'L'=>6.11,'M'=>8.89,'N'=>7.22,'O'=>7.78,
+            'P'=>6.67,'Q'=>7.78,'R'=>7.22,'S'=>6.67,'T'=>6.11,'U'=>7.22,
+            'V'=>6.67,'W'=>9.44,'X'=>6.67,'Y'=>6.67,'Z'=>6.11,
+            '['=>3.33,'\\'=>3.33,']'=>3.33,'^'=>5.84,'_'=>5.56,
+            '`'=>3.33,'a'=>5.56,'b'=>6.11,'c'=>5.56,'d'=>6.11,'e'=>5.56,
+            'f'=>3.89,'g'=>6.11,'h'=>6.11,'i'=>2.78,'j'=>3.33,'k'=>6.11,
+            'l'=>2.78,'m'=>8.89,'n'=>6.11,'o'=>6.11,'p'=>6.11,'q'=>6.11,
+            'r'=>3.89,'s'=>5.56,'t'=>3.89,'u'=>6.11,'v'=>5.56,'w'=>7.78,
+            'x'=>5.56,'y'=>5.56,'z'=>5.56,
+        ];
+        $w = 0;
+        for ($i = 0; $i < mb_strlen($text); $i++) {
+            $ch = mb_substr($text, $i, 1);
+            $w += isset($widths[$ch]) ? $widths[$ch] : 5.56; // default ~avg
+        }
+        return $w * $size;
+    }
+
+    function fieldRow($label, $value, $label_w = 0) {
         $this->checkPage(14);
         $y = $this->getY();
         $line_h = 12;
-        // Dynamic label width — conservative estimate for Helvetica Bold 9pt
-        // Avg char width ~5.2pt, but uppercase/spaces push it higher
-        $label_chars = mb_strlen($label);
-        $label_pt_per_char = 9 * 0.58;
-        $dynamic_label_w = $label_chars * $label_pt_per_char + 16;
-        $actual_label_w = max($label_w, $dynamic_label_w);
-        $val_x = self::MARGIN + $actual_label_w;
+        $full_w = self::PAGE_W - 2 * self::MARGIN;
+        // If no label_w given, measure and use 55% max
+        if ($label_w <= 0) {
+            $measured = $this->measureBold($label, 9);
+            $label_w = min($full_w * 0.58, $measured + 12);
+        }
+        $val_x = self::MARGIN + $label_w;
         $val_max = self::PAGE_W - self::MARGIN - $val_x;
         $lines = $this->wrapText($value ?: '—', $val_max, 10);
         $this->text(self::MARGIN, $y, $label, 9, [51, 51, 51], 'B');
@@ -624,15 +654,15 @@ class TFCAP_PDF {
         $y = $this->getY();
         $mid = self::PAGE_W / 2;
         $line_h = 12;
+        $col_w = $mid - self::MARGIN - 8;
 
-        // Dynamic label widths — conservative estimate for Helvetica Bold 9pt
-        $label_pt_per_char = 9 * 0.58;
-        $val1_offset = max(110, mb_strlen($label1) * $label_pt_per_char + 16);
-        $val2_offset = max(110, mb_strlen($label2) * $label_pt_per_char + 16);
+        // Measure labels and cap at 58% of column width
+        $lbl1_w = min($col_w * 0.58, $this->measureBold($label1, 9) + 12);
+        $lbl2_w = min($col_w * 0.58, $this->measureBold($label2, 9) + 12);
 
         // Column 1
-        $val1_x = self::MARGIN + $val1_offset;
-        $val1_max = $mid - $val1_x - 8;
+        $val1_x = self::MARGIN + $lbl1_w;
+        $val1_max = $mid - $val1_x - 4;
         $lines1 = $this->wrapText($value1 ?: '—', $val1_max, 10);
         $this->text(self::MARGIN, $y, $label1, 9, [51, 51, 51], 'B');
         foreach ($lines1 as $i => $l) {
@@ -640,7 +670,7 @@ class TFCAP_PDF {
         }
 
         // Column 2
-        $val2_x = $mid + $val2_offset;
+        $val2_x = $mid + $lbl2_w;
         $val2_max = self::PAGE_W - self::MARGIN - $val2_x;
         $lines2 = $this->wrapText($value2 ?: '—', $val2_max, 10);
         $this->text($mid, $y, $label2, 9, [51, 51, 51], 'B');
@@ -801,22 +831,70 @@ class TFCAP_PDF {
 
         tfcap_log("embedImage: PNG {$width}x{$height}, color_type={$color_type}, has_alpha=" . ($has_alpha ? 'yes' : 'no'));
 
-        // No alpha — pass IDAT straight through, let PDF reader handle filter bytes
+        // No alpha — decompress, crop whitespace, resize, recompress
         if (!$has_alpha) {
             $colors = ($color_type === 0) ? 1 : 3;
             $colorspace = ($color_type === 0) ? '/DeviceGray' : '/DeviceRGB';
+            $channels_out = $colors;
+
+            $filtered = @gzuncompress($idat);
+            if ($filtered === false) { tfcap_log("embedImage(no-alpha): gzuncompress failed"); return false; }
+
+            // Reconstruct raw pixel rows (with filter bytes)
+            $row_stride = 1 + $width * $channels_out;
+            $raw_out = '';
+            $prev_raw = str_repeat("\x00", $width * $channels_out);
+            for ($y_row = 0; $y_row < $height; $y_row++) {
+                $offset = $y_row * $row_stride;
+                $filter_byte = ord($filtered[$offset]);
+                $row_bytes = substr($filtered, $offset + 1, $width * $channels_out);
+                $row_raw = tfcap_png_reverse_filter($filter_byte, $row_bytes, $prev_raw, $channels_out);
+                $prev_raw = $row_raw;
+                $raw_out .= "\x00" . $row_raw;
+            }
+
+            // Crop whitespace
+            list($raw_out, $width, $height) = $this->cropWhitespace($raw_out, $width, $height, $channels_out, 1 + $width * $channels_out);
+
+            // Resize to fit
+            if ($width > $max_w || $height > $max_h) {
+                $scale = min($max_w / $width, $max_h / $height);
+                $final_w = (int)floor($width * $scale);
+                $final_h = (int)floor($height * $scale);
+                $old_stride = 1 + $width * $channels_out;
+                $resized = '';
+                for ($ry = 0; $ry < $final_h; $ry++) {
+                    $src_y = (int)floor($ry / $scale);
+                    $resized .= "\x00";
+                    for ($rx = 0; $rx < $final_w; $rx++) {
+                        $src_x = (int)floor($rx / $scale);
+                        $src_off = $src_y * $old_stride + 1 + $src_x * $channels_out;
+                        $resized .= substr($raw_out, $src_off, $channels_out);
+                    }
+                }
+                $raw_out = $resized;
+                $width = $final_w;
+                $height = $final_h;
+                tfcap_log("embedImage(no-alpha): resized to {$final_w}x{$final_h}");
+            } else {
+                $final_w = $width;
+                $final_h = $height;
+            }
+
+            $compressed_out = @gzcompress($raw_out, 6);
+            if (!$compressed_out) { tfcap_log("embedImage(no-alpha): gzcompress failed"); return false; }
 
             $this->images[] = [
-                'data' => $idat,
-                'w' => $width,
-                'h' => $height,
+                'data' => $compressed_out,
+                'w' => $final_w,
+                'h' => $final_h,
                 'filter' => '/FlateDecode',
                 'colorspace' => $colorspace,
                 'bit_depth' => $bit_depth,
-                'decode_parms' => "<< /Predictor 15 /Colors {$colors} /BitsPerComponent {$bit_depth} /Columns {$width} >>",
+                'decode_parms' => "<< /Predictor 15 /Colors {$channels_out} /BitsPerComponent {$bit_depth} /Columns {$final_w} >>",
             ];
             $img_idx = count($this->images);
-            $this->raw("q {$width} 0 0 {$height} {$x} {$y} cm /I{$img_idx} Do Q\n");
+            $this->raw("q {$final_w} 0 0 {$final_h} {$x} {$y} cm /I{$img_idx} Do Q\n");
             return true;
         }
 
@@ -863,91 +941,11 @@ class TFCAP_PDF {
             $raw_out .= $out_row;
         }
 
-        // ── Crop whitespace (find bounding box of non-white pixels) ─────────
-        $white_thresh = 250; // pixels with all channels > this are considered white
-        $crop_top = $crop_bottom = $crop_left = $crop_right = 0;
-        $found = false;
-
-        // Scan from top
-        for ($cy = 0; $cy < $height && !$found; $cy++) {
-            for ($cx = 0; $cx < $width; $cx++) {
-                $px = $cy * (1 + $width * $channels_out) + 1 + $cx * $channels_out;
-                $non_white = false;
-                for ($ch = 0; $ch < $channels_out; $ch++) {
-                    if (ord($raw_out[$px + $ch]) < $white_thresh) { $non_white = true; break; }
-                }
-                if ($non_white) { $crop_top = $cy; $found = true; break; }
-            }
-        }
-
-        // Scan from bottom
-        $found = false;
-        for ($cy = $height - 1; $cy >= 0 && !$found; $cy--) {
-            for ($cx = 0; $cx < $width; $cx++) {
-                $px = $cy * (1 + $width * $channels_out) + 1 + $cx * $channels_out;
-                $non_white = false;
-                for ($ch = 0; $ch < $channels_out; $ch++) {
-                    if (ord($raw_out[$px + $ch]) < $white_thresh) { $non_white = true; break; }
-                }
-                if ($non_white) { $crop_bottom = $cy; $found = true; break; }
-            }
-        }
-
-        // Scan from left
-        $found = false;
-        for ($cx = 0; $cx < $width && !$found; $cx++) {
-            for ($cy = $crop_top; $cy <= $crop_bottom; $cy++) {
-                $px = $cy * (1 + $width * $channels_out) + 1 + $cx * $channels_out;
-                $non_white = false;
-                for ($ch = 0; $ch < $channels_out; $ch++) {
-                    if (ord($raw_out[$px + $ch]) < $white_thresh) { $non_white = true; break; }
-                }
-                if ($non_white) { $crop_left = $cx; $found = true; break; }
-            }
-        }
-
-        // Scan from right
-        $found = false;
-        for ($cx = $width - 1; $cx >= 0 && !$found; $cx--) {
-            for ($cy = $crop_top; $cy <= $crop_bottom; $cy++) {
-                $px = $cy * (1 + $width * $channels_out) + 1 + $cx * $channels_out;
-                $non_white = false;
-                for ($ch = 0; $ch < $channels_out; $ch++) {
-                    if (ord($raw_out[$px + $ch]) < $white_thresh) { $non_white = true; break; }
-                }
-                if ($non_white) { $crop_right = $cx; $found = true; break; }
-            }
-        }
-
-        // Apply crop with 8px padding (stay within image bounds)
-        $pad = 8;
-        $crop_top    = max(0, $crop_top - $pad);
-        $crop_bottom = min($height - 1, $crop_bottom + $pad);
-        $crop_left   = max(0, $crop_left - $pad);
-        $crop_right  = min($width - 1, $crop_right + $pad);
-
-        $crop_w = $crop_right - $crop_left + 1;
-        $crop_h = $crop_bottom - $crop_top + 1;
-
-        if ($crop_w > 0 && $crop_h > 0 && ($crop_w < $width || $crop_h < $height)) {
-            $old_w = $width;
-            $old_h = $height;
-            $old_stride = 1 + $width * $channels_out;
-            $new_stride = 1 + $crop_w * $channels_out;
-            $cropped = '';
-            for ($cy = $crop_top; $cy <= $crop_bottom; $cy++) {
-                $cropped .= "\x00"; // filter byte
-                $src_off = $cy * $old_stride + 1 + $crop_left * $channels_out;
-                $cropped .= substr($raw_out, $src_off, $crop_w * $channels_out);
-            }
-            $raw_out = $cropped;
-            $width = $crop_w;
-            $height = $crop_h;
-            tfcap_log("embedImage: cropped {$crop_w}x{$crop_h} from {$old_w}x{$old_h}");
-        }
+        // ── Crop whitespace ──────────────────────────────────────────────────
+        list($raw_out, $width, $height) = $this->cropWhitespace($raw_out, $width, $height, $channels_out, 1 + $width * $channels_out);
         // ── End crop ────────────────────────────────────────────────────────
 
-        // ── Nearest-neighbor resize (alpha path only) ──────────────────────────
+        // ── Nearest-neighbor resize ─────────────────────────────────────────
         if ( $width > $max_w || $height > $max_h ) {
             $scale   = min( $max_w / $width, $max_h / $height );
             $final_w = (int) floor( $width  * $scale );
@@ -995,6 +993,88 @@ class TFCAP_PDF {
         $img_idx = count($this->images);
         $this->raw("q {$final_w} 0 0 {$final_h} {$x} {$y} cm /I{$img_idx} Do Q\n");
         return true;
+    }
+
+    // Crop whitespace from raw pixel data — returns [cropped_data, new_width, new_height]
+    private function cropWhitespace($raw_out, $width, $height, $channels, $stride) {
+        $white_thresh = 250;
+        $crop_top = $crop_bottom = $crop_left = $crop_right = 0;
+        $found = false;
+
+        // Scan from top
+        for ($cy = 0; $cy < $height && !$found; $cy++) {
+            for ($cx = 0; $cx < $width; $cx++) {
+                $px = $cy * $stride + 1 + $cx * $channels;
+                $non_white = false;
+                for ($ch = 0; $ch < $channels; $ch++) {
+                    if (ord($raw_out[$px + $ch]) < $white_thresh) { $non_white = true; break; }
+                }
+                if ($non_white) { $crop_top = $cy; $found = true; break; }
+            }
+        }
+
+        // Scan from bottom
+        $found = false;
+        for ($cy = $height - 1; $cy >= 0 && !$found; $cy--) {
+            for ($cx = 0; $cx < $width; $cx++) {
+                $px = $cy * $stride + 1 + $cx * $channels;
+                $non_white = false;
+                for ($ch = 0; $ch < $channels; $ch++) {
+                    if (ord($raw_out[$px + $ch]) < $white_thresh) { $non_white = true; break; }
+                }
+                if ($non_white) { $crop_bottom = $cy; $found = true; break; }
+            }
+        }
+
+        // Scan from left
+        $found = false;
+        for ($cx = 0; $cx < $width && !$found; $cx++) {
+            for ($cy = $crop_top; $cy <= $crop_bottom; $cy++) {
+                $px = $cy * $stride + 1 + $cx * $channels;
+                $non_white = false;
+                for ($ch = 0; $ch < $channels; $ch++) {
+                    if (ord($raw_out[$px + $ch]) < $white_thresh) { $non_white = true; break; }
+                }
+                if ($non_white) { $crop_left = $cx; $found = true; break; }
+            }
+        }
+
+        // Scan from right
+        $found = false;
+        for ($cx = $width - 1; $cx >= 0 && !$found; $cx--) {
+            for ($cy = $crop_top; $cy <= $crop_bottom; $cy++) {
+                $px = $cy * $stride + 1 + $cx * $channels;
+                $non_white = false;
+                for ($ch = 0; $ch < $channels; $ch++) {
+                    if (ord($raw_out[$px + $ch]) < $white_thresh) { $non_white = true; break; }
+                }
+                if ($non_white) { $crop_right = $cx; $found = true; break; }
+            }
+        }
+
+        // Apply crop with 8px padding
+        $pad = 8;
+        $crop_top    = max(0, $crop_top - $pad);
+        $crop_bottom = min($height - 1, $crop_bottom + $pad);
+        $crop_left   = max(0, $crop_left - $pad);
+        $crop_right  = min($width - 1, $crop_right + $pad);
+
+        $crop_w = $crop_right - $crop_left + 1;
+        $crop_h = $crop_bottom - $crop_top + 1;
+
+        if ($crop_w > 0 && $crop_h > 0 && ($crop_w < $width || $crop_h < $height)) {
+            $new_stride = 1 + $crop_w * $channels;
+            $cropped = '';
+            for ($cy = $crop_top; $cy <= $crop_bottom; $cy++) {
+                $cropped .= "\x00";
+                $src_off = $cy * $stride + 1 + $crop_left * $channels;
+                $cropped .= substr($raw_out, $src_off, $crop_w * $channels);
+            }
+            tfcap_log("cropWhitespace: {$crop_w}x{$crop_h} from {$width}x{$height}");
+            return [$cropped, $crop_w, $crop_h];
+        }
+
+        return [$raw_out, $width, $height];
     }
 
     // Embed a base64 PNG at native resolution — no resize, no quality loss
