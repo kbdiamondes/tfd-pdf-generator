@@ -1,5 +1,11 @@
 # TFD Credit Application PDF Generator — Changelog
 
+## v1.14.0 (2026-09-16)
+- Added GitHub auto-updater — pushes to GitHub releases auto-appear in WP admin
+- Works with public repos out of the box
+- For private repos: define `TFCAP_GITHUB_TOKEN` in wp-config.php
+- Added `Plugin URI` and `Update URI` headers
+
 ## v1.13.0 (2026-09-16)
 - Increased signature box from 250×140 to 400×150 points
 - Signatures now render at ~314×134 pixels (readable, professional size)

@@ -1,14 +1,111 @@
 <?php
 /**
  * Plugin Name: Credit Application PDF
+ * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.13.0
+ * Version: 1.14.0
  * Author: keithdoesmarketing.com
  * Requires PHP: 7.4
  * Requires Plugins: ninja-forms
+ * Update URI: https://github.com/kbdiamondes/tfd-pdf-generator
  */
 
 if (!defined('ABSPATH')) exit;
+
+// ============================================================
+// GITHUB AUTO-UPDATER
+// ============================================================
+add_filter('pre_set_site_transient_update_plugins', function($transient) {
+    $plugin_file = plugin_basename(__FILE__);
+    $remote = tfcap_check_github_update();
+    if ($remote && version_compare($remote['version'], tfcap_get_version(), '>')) {
+        $transient->response[$plugin_file] = (object) [
+            'slug'        => dirname($plugin_file),
+            'url'         => $remote['url'],
+            'package'     => $remote['zip_url'],
+            'new_version' => $remote['version'],
+            'requires'    => '7.4',
+            'requires_php'=> '7.4',
+        ];
+    }
+    return $transient;
+});
+
+add_filter('plugins_api', function($result, $action, $args) {
+    if ($action !== 'plugin_information') return $result;
+    if (!isset($args->slug) || $args->slug !== dirname(plugin_basename(__FILE__))) return $result;
+
+    $remote = tfcap_check_github_update();
+    if (!$remote) return $result;
+
+    return (object) [
+        'name'          => 'Credit Application PDF',
+        'slug'          => dirname(plugin_basename(__FILE__)),
+        'version'       => $remote['version'],
+        'requires'      => '7.4',
+        'requires_php'  => '7.4',
+        'author'        => 'keithdoesmarketing.com',
+        'homepage'      => $remote['url'],
+        'sections'      => ['changelog' => $remote['notes']],
+        'download_link' => $remote['zip_url'],
+    ];
+}, 10, 3);
+
+add_filter('upgrader_source_selection', function($source, $remote_source, $upgrader_object) {
+    // GitHub zips extract to repo-branch/, rename to plugin folder
+    $desired = dirname(plugin_basename(__FILE__));
+    $extracted = basename(rtrim($source, '/'));
+    if ($extracted !== $desired) {
+        $new_source = trailingslashit(dirname($source)) . $desired . '/';
+        if (@rename($source, $new_source)) {
+            return $new_source;
+        }
+    }
+    return $source;
+}, 10, 3);
+
+function tfcap_get_version() {
+    $plugin_data = get_plugin_data(__FILE__);
+    return $plugin_data['Version'] ?? '0.0.0';
+}
+
+function tfcap_check_github_update() {
+    $cache_key = 'tfcap_github_update';
+    $cached = get_transient($cache_key);
+    if ($cached !== false) return $cached;
+
+    $repo = 'kbdiamondes/tfd-pdf-generator';
+    $api_url = "https://api.github.com/repos/{$repo}/releases/latest";
+
+    $args = ['timeout' => 15, 'headers' => ['Accept' => 'application/vnd.github.v3+json']];
+
+    // Private repo support — set TFCAP_GITHUB_TOKEN in wp-config.php
+    if (defined('TFCAP_GITHUB_TOKEN') && TFCAP_GITHUB_TOKEN) {
+        $args['headers']['Authorization'] = 'token ' . TFCAP_GITHUB_TOKEN;
+    }
+
+    $response = wp_remote_get($api_url, $args);
+    if (is_wp_error($response)) return false;
+
+    $code = wp_remote_retrieve_response_code($response);
+    if ($code !== 200) return false;
+
+    $release = json_decode(wp_remote_retrieve_body($response), true);
+    if (!$release || empty($release['tag_name'])) return false;
+
+    $version = ltrim($release['tag_name'], 'v');
+    $zip_url = $release['zipball_url'] ?? '';
+
+    $result = [
+        'version' => $version,
+        'url'     => $release['html_url'] ?? '',
+        'zip_url' => $zip_url,
+        'notes'   => $release['body'] ?? '',
+    ];
+
+    set_transient($cache_key, $result, 3600); // cache 1 hour
+    return $result;
+}
 
 // ============================================================
 // CONFIG
