@@ -3,7 +3,7 @@
  * Plugin Name: Credit Application PDF
  * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.16.1
+ * Version: 1.17.0
  * Author: keithdoesmarketing.com
  * Requires PHP: 7.0
  * Requires Plugins: ninja-forms
@@ -482,9 +482,9 @@ class TFCAP_PDF {
         $y = $this->getY();
         // Light grey background
         $this->raw("q 0.95 0.95 0.95 rg " . self::MARGIN . " " . ($y - 2) . " " . (self::PAGE_W - 2 * self::MARGIN) . " 12 re f Q\n");
-        $this->text(self::MARGIN + 2, $y, $label, 8, [153, 153, 153]);
+        $this->text(self::MARGIN + 2, $y, $this->truncate($label, 140, 8), 8, [153, 153, 153]);
         if ($value) {
-            $this->text(self::MARGIN + $label_w + 2, $y, $value, 9, [153, 153, 153]);
+            $this->text(self::MARGIN + $label_w + 2, $y, $this->truncate($value, 200, 9), 9, [153, 153, 153]);
         }
         $this->setY($y - 14);
     }
@@ -495,10 +495,10 @@ class TFCAP_PDF {
         $mid = self::PAGE_W / 2;
         // Light grey background
         $this->raw("q 0.95 0.95 0.95 rg " . self::MARGIN . " " . ($y - 2) . " " . (self::PAGE_W - 2 * self::MARGIN) . " 12 re f Q\n");
-        $this->text(self::MARGIN + 2, $y, $label1, 8, [153, 153, 153]);
-        if ($val1) $this->text(self::MARGIN + 112, $y, $val1, 9, [153, 153, 153]);
-        $this->text($mid + 2, $y, $label2, 8, [153, 153, 153]);
-        if ($val2) $this->text($mid + 112, $y, $val2, 9, [153, 153, 153]);
+        $this->text(self::MARGIN + 2, $y, $this->truncate($label1, 100, 8), 8, [153, 153, 153]);
+        if ($val1) $this->text(self::MARGIN + 112, $y, $this->truncate($val1, 120, 9), 9, [153, 153, 153]);
+        $this->text($mid + 2, $y, $this->truncate($label2, 100, 8), 8, [153, 153, 153]);
+        if ($val2) $this->text($mid + 112, $y, $this->truncate($val2, 120, 9), 9, [153, 153, 153]);
         $this->setY($y - 14);
     }
 
@@ -523,7 +523,9 @@ class TFCAP_PDF {
         $this->checkPage(14);
         $y = $this->getY();
         $this->text(self::MARGIN, $y, $label, 9, [51, 51, 51], 'B');
-        $this->text(self::MARGIN + $label_w, $y, $value ?: '—', 10, [26, 26, 26]);
+        $val_x = self::MARGIN + $label_w;
+        $val_max_w = self::PAGE_W - self::MARGIN - $val_x;
+        $this->text($val_x, $y, $this->truncate($value ?: '—', $val_max_w, 10), 10, [26, 26, 26]);
         $this->setY($y - 14);
     }
 
@@ -531,11 +533,28 @@ class TFCAP_PDF {
         $this->checkPage(14);
         $y = $this->getY();
         $mid = self::PAGE_W / 2;
+        // Value column: start after label, end before next column label
+        $val1_x = self::MARGIN + 100;
+        $val1_max_w = $mid - $val1_x - 6; // gap before col2 label
+        $val2_x = $mid + 100;
+        $val2_max_w = self::PAGE_W - self::MARGIN - $val2_x;
         $this->text(self::MARGIN, $y, $label1, 9, [51, 51, 51], 'B');
-        $this->text(self::MARGIN + 110, $y, $value1 ?: '—', 10, [26, 26, 26]);
+        $this->text($val1_x, $y, $this->truncate($value1 ?: '—', $val1_max_w, 10), 10, [26, 26, 26]);
         $this->text($mid, $y, $label2, 9, [51, 51, 51], 'B');
-        $this->text($mid + 110, $y, $value2 ?: '—', 10, [26, 26, 26]);
+        $this->text($val2_x, $y, $this->truncate($value2 ?: '—', $val2_max_w, 10), 10, [26, 26, 26]);
         $this->setY($y - 14);
+    }
+
+    // Truncate text to fit within $max_w points (approx 5pt per char at size 10)
+    private function truncate($text, $max_w, $size = 10) {
+        if (!$text) return '—';
+        $pt_per_char = $size * 0.52; // approximate for Helvetica
+        $max_chars = (int)floor($max_w / $pt_per_char);
+        if ($max_chars < 3) $max_chars = 3;
+        if (mb_strlen($text) > $max_chars) {
+            return mb_substr($text, 0, $max_chars - 1) . '…';
+        }
+        return $text;
     }
 
     function note($text) {
@@ -584,6 +603,8 @@ class TFCAP_PDF {
             }
 
             if ($img_b64) {
+                // White background behind signature (prevents transparent PNG fading)
+                $this->raw("q 1 1 1 rg " . ($box_x + 8) . " " . ($y - $box_h + 8) . " " . ($box_w - 16) . " " . ($box_h - 16) . " re f Q\n");
                 $has_sig = $this->embedImage($box_x + 8, $y - $box_h + 8, $box_w - 16, $box_h - 16, $img_b64);
             }
         }
@@ -881,6 +902,25 @@ function tfcap_log($msg) {
 }
 
 // ============================================================
+// RADIO LABEL MAPPER — converts raw NF3 radio values to labels
+// ============================================================
+function tfcap_radio_label($raw) {
+    $map = [
+        'sole_trader'              => 'Sole Trader',
+        'partnership'              => 'Partnership',
+        'pty_ltd_company'          => 'Pty Ltd Company',
+        'other'                    => 'Other',
+        'company'                  => 'Company',
+        'trust'                    => 'Trust',
+        'individual'               => 'Individual',
+        // Registered Business Name options
+        'same_as_applicant'        => 'Same as Applicant Name',
+        'registered_business_name' => 'Registered Business Name',
+    ];
+    return isset($map[$raw]) ? $map[$raw] : $raw;
+}
+
+// ============================================================
 // PDF GENERATION — ninja_forms_submit_data (FILTER)
 // Fires BEFORE processing, so PDF exists when email action runs.
 // ============================================================
@@ -936,10 +976,10 @@ function tfcap_generate_pdf($form_data) {
         $pdf->sectionHeader('1. Applicant Details');
         $pdf->fieldRow('Applicant Full Name / Company:', tfcap_by_key($fields, 'textbox_2'));
         $pdf->twoColField('A.C.N.:', tfcap_by_key($fields, 'textbox_3'), 'A.B.N.:', tfcap_by_key($fields, 'textbox_4'));
-        $pdf->fieldRow('Applicant is a:', tfcap_by_key($fields, 'listradio_5'));
+        $pdf->fieldRow('Applicant is a:', tfcap_radio_label(tfcap_by_key($fields, 'listradio_5')));
         $pdf->fieldRow('Other details:', tfcap_by_key($fields, 'textbox_6'));
         $pdf->fieldRow('Trading Name:', tfcap_by_key($fields, 'textbox_7'));
-        $pdf->fieldRow('Registered Business Name:', tfcap_by_key($fields, 'listradio_8'));
+        $pdf->fieldRow('Registered Business Name:', tfcap_radio_label(tfcap_by_key($fields, 'listradio_8')));
 
         // 2. ACCOUNTS CONTACT
         $pdf->sectionHeader('2. Accounts Contact Details');

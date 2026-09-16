@@ -1,5 +1,12 @@
 # TFD Credit Application PDF Generator — Changelog
 
+## v1.17.0 (2026-09-16)
+- Fixed text overlap in PDF — twoColField now truncates values that exceed column width
+- Fixed signature rendering — added white background behind signature images to prevent fading on transparent PNGs
+- Fixed radio field labels — "Applicant is a" and "Registered Business Name" now show proper labels instead of raw values
+- Added truncate() helper to prevent any text from exceeding its allocated column space
+- Applied truncation to readOnlyField and readOnlyTwoCol in Office Use Only section
+
 ## v1.16.1 (2026-09-16)
 - Lowered PHP requirement from 7.4 to 7.0 for wider compatibility
 
