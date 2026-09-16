@@ -10,15 +10,28 @@ Paste this into the browser console on the credit application form page. It fill
 4. Press Enter
 5. Review the filled form — all fields populate instantly
 
-> **Tip:** If you see a `>` prompt in the console, you're in the right spot. Just paste and go.
+## Step 1: Discover Field IDs
 
-## The Script
+First, run this to see all fields on the page:
 
-Paste everything below into the browser console on the form page:
+```javascript
+// Discovery script — run this first
+document.querySelectorAll('input, textarea, select').forEach(el => {
+  const label = el.closest('.nf-field-container')?.querySelector('.nf-field-label')?.textContent?.trim() || '';
+  const ph = el.placeholder || '';
+  const type = el.type || el.tagName;
+  console.log(`${el.id || 'no-id'} | ${type} | "${ph}" | "${label}"`);
+});
+```
+
+## Step 2: Auto-Fill Script
+
+Once you see the field IDs, paste this script:
 
 ```javascript
 (() => {
-  // ── Helper: set value + fire NF3 events ────────────────────
+  let filled = 0;
+
   function setVal(id, value) {
     const el = document.getElementById(id);
     if (!el) return false;
@@ -34,39 +47,8 @@ Paste everything below into the browser console on the form page:
     return true;
   }
 
-  // ── Find field ID by NF key name ───────────────────────────
-  // NF3 renders fields as nf-field-XXX where XXX matches the
-  // field's internal ID. We find them by looking for the
-  // nf-field-wrap element with data-field-id matching our key.
-  function findFieldId(keyName) {
-    // Method 1: Look for nf-field elements by their label text
-    const wraps = document.querySelectorAll('.nf-field-container');
-    for (const wrap of wraps) {
-      const input = wrap.querySelector('input, textarea, select');
-      if (input && input.id && input.id.includes(keyName.replace(/[a-z_]/g, ''))) {
-        return input.id;
-      }
-    }
-    // Method 2: Try common NF3 ID patterns
-    // NF3 assigns sequential IDs starting from a base.
-    // We can't predict them, so we'll scan all inputs.
-    return null;
-  }
-
-  // ── Auto-discover all NF3 field IDs ────────────────────────
-  // Scans the DOM for all nf-field-* elements and maps them
-  const allFields = {};
-  document.querySelectorAll('[id^="nf-field-"]').forEach(el => {
-    const match = el.id.match(/^nf-field-(\d+)$/);
-    if (match) {
-      allFields[match[1]] = el;
-    }
-  });
-
-  // ── Mock Data (by field key → value) ───────────────────────
-  // We'll match by placeholder or label text since NF3 IDs are dynamic
-  const mockData = {
-    // Text inputs — match by placeholder text
+  // ── Fill ALL inputs by placeholder match ────────────────────
+  const mockByPlaceholder = {
     'Full Name or Company Name': 'Perth Party Supplies Pty Ltd',
     'A.C.N.': '123 456 789',
     'A.B.N.': '63 667 911 944',
@@ -97,15 +79,10 @@ Paste everything below into the browser console on the form page:
     'e.g. Email 16/09/2026': 'Email 16/09/2026',
   };
 
-  // ── Fill text/email/phone/date fields ─────────────────────
-  let filled = 0;
-  for (const [id, el] of Object.entries(allFields)) {
-    const input = el.querySelector('input, textarea, select');
-    if (!input) continue;
-
-    const placeholder = input.getAttribute('placeholder') || '';
-    const value = mockData[placeholder];
-
+  // Fill by placeholder
+  document.querySelectorAll('input, textarea').forEach(input => {
+    const ph = input.placeholder || '';
+    const value = mockByPlaceholder[ph];
     if (value && input.value !== value) {
       const setter = Object.getOwnPropertyDescriptor(
         input.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype,
@@ -118,112 +95,65 @@ Paste everything below into the browser console on the form page:
       input.dispatchEvent(new Event('blur',   { bubbles: true }));
       filled++;
     }
-  }
+  });
 
   // ── Radio buttons ──────────────────────────────────────────
-  // Find radio groups by label text and click the right option
   document.querySelectorAll('.nf-field-radio').forEach(field => {
-    const label = field.querySelector('.nf-option-label')?.textContent?.trim();
+    const labelText = field.closest('.nf-field-container')?.querySelector('.nf-field-label')?.textContent || '';
     const options = field.querySelectorAll('input[type="radio"]');
 
-    if (field.closest('.nf-field-container')?.querySelector('.nf-field-label')?.textContent?.includes('Applicant is a')) {
-      // Click "Pty Ltd Company" (first option)
-      if (options[0]) { options[0].click(); filled++; }
+    if (labelText.includes('Applicant is a') && options[0]) {
+      options[0].click(); filled++;
     }
-    if (field.closest('.nf-field-container')?.querySelector('.nf-field-label')?.textContent?.includes('registered business name')) {
-      // Click "Yes" (first option)
-      if (options[0]) { options[0].click(); filled++; }
+    if (labelText.includes('registered business name') && options[0]) {
+      options[0].click(); filled++;
     }
   });
 
   // ── Checkboxes ─────────────────────────────────────────────
-  document.querySelectorAll('.nf-field-checkbox').forEach(field => {
-    const checkbox = field.querySelector('input[type="checkbox"]');
-    if (checkbox && !checkbox.checked) {
-      checkbox.click();
-      filled++;
-    }
+  document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    if (!cb.checked) { cb.click(); filled++; }
   });
 
-  // ── Signatures — draw mock cursive on canvas ──────────────
-  function drawSig(canvas) {
-    if (!canvas) return false;
+  // ── Signatures — draw mock cursive ─────────────────────────
+  document.querySelectorAll('canvas').forEach(canvas => {
     const ctx = canvas.getContext('2d');
-    if (!ctx) return false;
-
+    if (!ctx) return;
     const w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.globalAlpha = 1;
-
-    // Cursive wave
     ctx.beginPath();
-    ctx.moveTo(0.05 * w, 0.60 * h);
-    const pts = [
-      [0.10, 0.30], [0.18, 0.55], [0.25, 0.25], [0.32, 0.50],
-      [0.38, 0.20], [0.45, 0.45], [0.52, 0.35], [0.58, 0.55],
-      [0.65, 0.30], [0.72, 0.50], [0.78, 0.38], [0.85, 0.48],
-      [0.92, 0.35],
-    ];
-    for (const [px, py] of pts) {
-      ctx.lineTo(px * w, py * h);
-    }
+    ctx.moveTo(0.05*w, 0.60*h);
+    [[0.10,0.30],[0.18,0.55],[0.25,0.25],[0.32,0.50],[0.38,0.20],
+     [0.45,0.45],[0.52,0.35],[0.58,0.55],[0.65,0.30],[0.72,0.50],
+     [0.78,0.38],[0.85,0.48],[0.92,0.35]].forEach(([x,y]) => ctx.lineTo(x*w, y*h));
     ctx.stroke();
-
-    // Underline flourish
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(0.10 * w, 0.70 * h);
-    ctx.quadraticCurveTo(0.50 * w, 0.60 * h, 0.92 * w, 0.68 * h);
+    ctx.moveTo(0.10*w, 0.70*h);
+    ctx.quadraticCurveTo(0.50*w, 0.60*h, 0.92*w, 0.68*h);
     ctx.stroke();
-
-    // Trigger NF3 signature save
     canvas.dispatchEvent(new Event('change', { bubbles: true }));
-    return true;
-  }
-
-  document.querySelectorAll('canvas[id^="nf-field-"]').forEach(canvas => {
-    if (drawSig(canvas)) filled++;
+    filled++;
   });
 
-  // ── Summary ────────────────────────────────────────────────
   console.log(`[TFCAP] ✅ Filled ${filled} fields with mock data.`);
-  if (filled === 0) {
-    console.warn('[TFCAP] No fields found. Make sure you are on the credit application form page.');
-    console.log('[TFCAP] Found NF3 fields:', Object.keys(allFields).length);
-    console.log('[TFCAP] All nf-field elements:', document.querySelectorAll('[id^="nf-field-"]').length);
-  }
 })();
 ```
-
-*(end of script)*
-
-## How It Works
-
-The script auto-discovers NF3 field IDs by scanning the DOM for all `[id^="nf-field-"]` elements. It then matches fields by their **placeholder text** (which is stable across imports) rather than hardcoded NF3 IDs.
-
-| Match Method | Examples |
-|---|---|
-| Placeholder text | `"Full Name or Company Name"` → fills with `"Perth Party Supplies Pty Ltd"` |
-| Radio group labels | `"Applicant is a"` → clicks `"Pty Ltd Company"` |
-| Checkboxes | All checkboxes → checked |
-| Canvas signatures | All signature canvases → draws mock cursive |
 
 ## Troubleshooting
 
 | Error | Fix |
 |---|---|
 | `javascript is not defined` | You pasted `javascript:` prefix. Clear console, paste raw script only. |
-| `Filled 0 fields` | You're not on the credit application page. Navigate to the form first. |
-| Some fields didn't fill | The placeholder text might have changed. Check the form's input placeholders. |
+| `Filled 0 fields` | Run the discovery script first to see what fields exist. |
+| Some fields didn't fill | The placeholder text might differ. Check the discovery output. |
 
 ## Notes
 
 - Signatures are drawn as mock cursive on the canvas pads
-- Checkboxes (Terms + Guarantee) are checked by default
+- All checkboxes are checked by default
 - Script is non-destructive — refresh the page to clear everything
-- No hardcoded NF3 IDs — works after any re-import
