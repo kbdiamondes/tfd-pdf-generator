@@ -323,23 +323,23 @@ function tfcap_get_nff_template() {
     {"id":50,"key":"textbox_50","type":"textbox","label":"Full Name (Director / Company Secretary)","order":49,"required":1,"default":"","label_pos":"above","personally_identifiable":1,"placeholder":"Full Name"},
     {"id":51,"key":"textbox_51","type":"textbox","label":"Position","order":50,"required":1,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"Director / Secretary"},
     {"id":52,"key":"signature_52","type":"signature","label":"Endorsement Signature","order":51,"required":1,"default":"","label_pos":"above","personally_identifiable":0,"signature_method":"drawn","signature_font":"dancing-script","drawn_placeholder":"Sign here","canvas_width":1000,"canvas_height":400,"pen_color":"#000000","background_color":"#ffffff"},
-    {"id":52,"key":"date_52","type":"date","label":"Date","order":52,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"dd/mm/yyyy"},
-    {"id":53,"key":"sectiondiv_53","type":"sectiondiv","label":"9. Directors' Guarantee and Indemnity","order":53,"required":0,"default":"","label_pos":"above","personally_identifiable":0},
-    {"id":54,"key":"html_54","type":"html","label":"","order":54,"required":0,"default":"<p>In consideration of The Fun Depot agreeing to provide credit terms, we personally guarantee payment of all money owing.</p>","label_pos":"hidden","personally_identifiable":0},
-    {"id":55,"key":"html_55","type":"html","label":"","order":55,"required":0,"default":"<h4>Guarantor 1</h4>","label_pos":"hidden","personally_identifiable":0},
-    {"id":56,"key":"textbox_56","type":"textbox","label":"Full Name","order":56,"required":0,"default":"","label_pos":"above","personally_identifiable":1,"placeholder":"Guarantor Name"},
-    {"id":57,"key":"textbox_57","type":"textbox","label":"Relationship to Applicant (e.g. Director)","order":57,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"e.g. Director"},
-    {"id":58,"key":"textbox_58","type":"textbox","label":"Residential Address","order":58,"required":0,"default":"","label_pos":"above","personally_identifiable":1,"placeholder":"Residential Address"},
-    {"id":59,"key":"signature_59","type":"signature","label":"Guarantor Signature","order":59,"required":1,"default":"","label_pos":"above","personally_identifiable":0,"signature_method":"drawn","signature_font":"dancing-script","drawn_placeholder":"Sign here","canvas_width":1000,"canvas_height":400,"pen_color":"#000000","background_color":"#ffffff"},
-    {"id":60,"key":"date_60","type":"date","label":"Date","order":60,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"dd/mm/yyyy"},
-    {"id":61,"key":"html_61","type":"html","label":"","order":61,"required":0,"default":"<h4>Guarantor 2 (if applicable)</h4>","label_pos":"hidden","personally_identifiable":0},
-    {"id":62,"key":"textbox_62","type":"textbox","label":"Full Name","order":62,"required":0,"default":"","label_pos":"above","personally_identifiable":1,"placeholder":"Guarantor 2 Name"},
-    {"id":63,"key":"textbox_63","type":"textbox","label":"Relationship to Applicant (e.g. Director)","order":63,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"e.g. Director"},
-    {"id":64,"key":"textbox_64","type":"textbox","label":"Residential Address","order":64,"required":0,"default":"","label_pos":"above","personally_identifiable":1,"placeholder":"Residential Address"},
-    {"id":65,"key":"signature_65","type":"signature","label":"Guarantor 2 Signature","order":65,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"signature_method":"drawn","signature_font":"dancing-script","drawn_placeholder":"Sign here","canvas_width":1000,"canvas_height":400,"pen_color":"#000000","background_color":"#ffffff"},
-    {"id":66,"key":"date_66","type":"date","label":"Date","order":66,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"dd/mm/yyyy"},
-    {"id":67,"key":"checkbox_67","type":"checkbox","label":"I/We have read, understood and agree to the Directors' Guarantee","order":67,"required":1,"default":"unchecked","label_pos":"right","personally_identifiable":0,"checked_value":"I / We Agree","unchecked_value":"","checked_calc_value":"1","unchecked_calc_value":"0"},
-    {"id":68,"key":"submit_68","type":"submit","label":"Submit Credit Application","order":68,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"processing_label":"Processing..."}
+    {"id":53,"key":"date_53","type":"date","label":"Date","order":52,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"dd/mm/yyyy"},
+    {"id":54,"key":"sectiondiv_54","type":"sectiondiv","label":"9. Directors' Guarantee and Indemnity","order":53,"required":0,"default":"","label_pos":"above","personally_identifiable":0},
+    {"id":55,"key":"html_55","type":"html","label":"","order":54,"required":0,"default":"<p>In consideration of The Fun Depot agreeing to provide credit terms, we personally guarantee payment of all money owing.</p>","label_pos":"hidden","personally_identifiable":0},
+    {"id":56,"key":"html_56","type":"html","label":"","order":55,"required":0,"default":"<h4>Guarantor 1</h4>","label_pos":"hidden","personally_identifiable":0},
+    {"id":57,"key":"textbox_57","type":"textbox","label":"Full Name","order":56,"required":0,"default":"","label_pos":"above","personally_identifiable":1,"placeholder":"Guarantor Name"},
+    {"id":58,"key":"textbox_58","type":"textbox","label":"Relationship to Applicant (e.g. Director)","order":57,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"e.g. Director"},
+    {"id":59,"key":"textbox_59","type":"textbox","label":"Residential Address","order":58,"required":0,"default":"","label_pos":"above","personally_identifiable":1,"placeholder":"Residential Address"},
+    {"id":60,"key":"signature_60","type":"signature","label":"Guarantor Signature","order":59,"required":1,"default":"","label_pos":"above","personally_identifiable":0,"signature_method":"drawn","signature_font":"dancing-script","drawn_placeholder":"Sign here","canvas_width":1000,"canvas_height":400,"pen_color":"#000000","background_color":"#ffffff"},
+    {"id":61,"key":"date_61","type":"date","label":"Date","order":60,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"dd/mm/yyyy"},
+    {"id":62,"key":"html_62","type":"html","label":"","order":61,"required":0,"default":"<h4>Guarantor 2 (if applicable)</h4>","label_pos":"hidden","personally_identifiable":0},
+    {"id":63,"key":"textbox_63","type":"textbox","label":"Full Name","order":62,"required":0,"default":"","label_pos":"above","personally_identifiable":1,"placeholder":"Guarantor 2 Name"},
+    {"id":64,"key":"textbox_64","type":"textbox","label":"Relationship to Applicant (e.g. Director)","order":63,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"e.g. Director"},
+    {"id":65,"key":"textbox_65","type":"textbox","label":"Residential Address","order":64,"required":0,"default":"","label_pos":"above","personally_identifiable":1,"placeholder":"Residential Address"},
+    {"id":66,"key":"signature_66","type":"signature","label":"Guarantor 2 Signature","order":65,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"signature_method":"drawn","signature_font":"dancing-script","drawn_placeholder":"Sign here","canvas_width":1000,"canvas_height":400,"pen_color":"#000000","background_color":"#ffffff"},
+    {"id":67,"key":"date_67","type":"date","label":"Date","order":66,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"placeholder":"dd/mm/yyyy"},
+    {"id":68,"key":"checkbox_68","type":"checkbox","label":"I/We have read, understood and agree to the Directors' Guarantee","order":67,"required":1,"default":"unchecked","label_pos":"right","personally_identifiable":0,"checked_value":"I / We Agree","unchecked_value":"","checked_calc_value":"1","unchecked_calc_value":"0"},
+    {"id":69,"key":"submit_69","type":"submit","label":"Submit Credit Application","order":68,"required":0,"default":"","label_pos":"above","personally_identifiable":0,"processing_label":"Processing..."}
   ],
   "actions": [
     {"type":"save","label":"Save Form Submission","active":true},
@@ -1298,7 +1298,7 @@ function tfcap_generate_pdf($form_data) {
         $pdf->twoColField('Full Name (Director / Company Secretary):', tfcap_by_key($fields, 'textbox_50'), 'Position:', tfcap_by_key($fields, 'textbox_51'));
         $sig52 = tfcap_by_key($fields, 'signature_52');
         $pdf->signatureBox('Endorsement Signature', $sig52);
-        $pdf->fieldRow('Date:', tfcap_by_key($fields, 'date_52'));
+        $pdf->fieldRow('Date:', tfcap_by_key($fields, 'date_53'));
 
         // 9. GUARANTEE
         $pdf->sectionHeader("9. Directors' Guarantee and Indemnity");
@@ -1307,21 +1307,21 @@ function tfcap_generate_pdf($form_data) {
 
         // Guarantor 1
         $pdf->subHeader('Guarantor 1');
-        $pdf->twoColField('Full Name:', tfcap_by_key($fields, 'textbox_56'), 'Relationship to Applicant (e.g. Director):', tfcap_by_key($fields, 'textbox_57'));
-        $pdf->fieldRow('Residential Address:', tfcap_by_key($fields, 'textbox_58'));
-        $sig59 = tfcap_by_key($fields, 'signature_59');
-        $pdf->signatureBox('Guarantor Signature', $sig59);
-        $pdf->fieldRow('Date:', tfcap_by_key($fields, 'date_60'));
+        $pdf->twoColField('Full Name:', tfcap_by_key($fields, 'textbox_57'), 'Relationship to Applicant (e.g. Director):', tfcap_by_key($fields, 'textbox_58'));
+        $pdf->fieldRow('Residential Address:', tfcap_by_key($fields, 'textbox_59'));
+        $sig60 = tfcap_by_key($fields, 'signature_60');
+        $pdf->signatureBox('Guarantor Signature', $sig60);
+        $pdf->fieldRow('Date:', tfcap_by_key($fields, 'date_61'));
 
         // Guarantor 2
         $pdf->subHeader('Guarantor 2 (if applicable)');
-        $pdf->twoColField('Full Name:', tfcap_by_key($fields, 'textbox_62'), 'Relationship to Applicant (e.g. Director):', tfcap_by_key($fields, 'textbox_63'));
-        $pdf->fieldRow('Residential Address:', tfcap_by_key($fields, 'textbox_64'));
-        $sig65 = tfcap_by_key($fields, 'signature_65');
-        $pdf->signatureBox('Guarantor 2 Signature', $sig65);
-        $pdf->fieldRow('Date:', tfcap_by_key($fields, 'date_66'));
+        $pdf->twoColField('Full Name:', tfcap_by_key($fields, 'textbox_63'), 'Relationship to Applicant (e.g. Director):', tfcap_by_key($fields, 'textbox_64'));
+        $pdf->fieldRow('Residential Address:', tfcap_by_key($fields, 'textbox_65'));
+        $sig66 = tfcap_by_key($fields, 'signature_66');
+        $pdf->signatureBox('Guarantor 2 Signature', $sig66);
+        $pdf->fieldRow('Date:', tfcap_by_key($fields, 'date_67'));
 
-        $guarantee_checked = (tfcap_by_key($fields, 'checkbox_67') === '1');
+        $guarantee_checked = (tfcap_by_key($fields, 'checkbox_68') === '1');
         $pdf->checkbox("I/We have read, understood and agree to the Directors' Guarantee", $guarantee_checked);
 
         // OFFICE USE ONLY
