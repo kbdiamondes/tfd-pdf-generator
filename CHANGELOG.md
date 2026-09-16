@@ -1,0 +1,31 @@
+# TFD Credit Application PDF Generator — Changelog
+
+## v1.13.0 (2026-09-16)
+- Increased signature box from 250×140 to 400×150 points
+- Signatures now render at ~314×134 pixels (readable, professional size)
+- Fixed alpha blending formula for correct signature rendering
+- Fixed PNG row filter reversal for all 5 filter types
+- Correct stride-based resize offset (no more flat array bug)
+- Private GitHub repo created: https://github.com/kbdiamondes/tfd-pdf-generator
+
+## v1.12.0 (2026-08-11)
+- Signatures render at full size (936×400)
+- All 60 fields populate correctly
+- Email attachment working
+- OFFICE USE section added
+- NFF template embedded in plugin
+- Debug logging to wp-content/uploads/tfcap-pdfs/debug.log
+
+## v1.11.0 (2026-08-10)
+- Initial plugin creation
+- Pure PHP PDF generator (zero dependencies)
+- Ninja Forms integration
+- Configurable email attachment mode
+
+---
+
+## Future Enhancements
+- [ ] "Resend PDF" button in WordPress admin
+- [ ] "Regenerate PDF" for existing submissions
+- [ ] PDF preview before sending
+- [ ] Custom PDF templates
