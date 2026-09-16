@@ -409,10 +409,10 @@ class TFCAP_PDF {
     }
 
     function signatureBox($label, $sig_data) {
-        $this->checkPage(160);
+        $this->checkPage(200);
         $y = $this->getY();
-        $box_h = 140;
-        $box_w = 250;
+        $box_h = 150;
+        $box_w = 400;
         $box_x = self::MARGIN + 50;
 
         $this->text($box_x, $y, $label, 9, [102, 102, 102]);
