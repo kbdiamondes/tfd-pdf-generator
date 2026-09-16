@@ -3,7 +3,7 @@
  * Plugin Name: Credit Application PDF
  * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.19.3
+ * Version: 1.19.4
  * Author: keithdoesmarketing.com
  * Requires PHP: 7.0
  * Requires Plugins: ninja-forms
@@ -603,11 +603,11 @@ class TFCAP_PDF {
         $this->checkPage(14);
         $y = $this->getY();
         $line_h = 12;
-        // Dynamic label width — measure label and add padding
+        // Dynamic label width — conservative estimate for Helvetica Bold 9pt
+        // Avg char width ~5.2pt, but uppercase/spaces push it higher
         $label_chars = mb_strlen($label);
-        $label_pt_per_char = 9 * 0.52; // 9pt bold
-        $dynamic_label_w = $label_chars * $label_pt_per_char + 10;
-        // Use whichever is wider: parameter or dynamic
+        $label_pt_per_char = 9 * 0.58;
+        $dynamic_label_w = $label_chars * $label_pt_per_char + 16;
         $actual_label_w = max($label_w, $dynamic_label_w);
         $val_x = self::MARGIN + $actual_label_w;
         $val_max = self::PAGE_W - self::MARGIN - $val_x;
@@ -625,10 +625,10 @@ class TFCAP_PDF {
         $mid = self::PAGE_W / 2;
         $line_h = 12;
 
-        // Dynamic label widths — measure labels and add padding
-        $label_pt_per_char = 9 * 0.52; // 9pt bold
-        $val1_offset = max(100, mb_strlen($label1) * $label_pt_per_char + 10);
-        $val2_offset = max(100, mb_strlen($label2) * $label_pt_per_char + 10);
+        // Dynamic label widths — conservative estimate for Helvetica Bold 9pt
+        $label_pt_per_char = 9 * 0.58;
+        $val1_offset = max(110, mb_strlen($label1) * $label_pt_per_char + 16);
+        $val2_offset = max(110, mb_strlen($label2) * $label_pt_per_char + 16);
 
         // Column 1
         $val1_x = self::MARGIN + $val1_offset;
@@ -862,6 +862,90 @@ class TFCAP_PDF {
             }
             $raw_out .= $out_row;
         }
+
+        // ── Crop whitespace (find bounding box of non-white pixels) ─────────
+        $white_thresh = 250; // pixels with all channels > this are considered white
+        $crop_top = $crop_bottom = $crop_left = $crop_right = 0;
+        $found = false;
+
+        // Scan from top
+        for ($cy = 0; $cy < $height && !$found; $cy++) {
+            for ($cx = 0; $cx < $width; $cx++) {
+                $px = $cy * (1 + $width * $channels_out) + 1 + $cx * $channels_out;
+                $non_white = false;
+                for ($ch = 0; $ch < $channels_out; $ch++) {
+                    if (ord($raw_out[$px + $ch]) < $white_thresh) { $non_white = true; break; }
+                }
+                if ($non_white) { $crop_top = $cy; $found = true; break; }
+            }
+        }
+
+        // Scan from bottom
+        $found = false;
+        for ($cy = $height - 1; $cy >= 0 && !$found; $cy--) {
+            for ($cx = 0; $cx < $width; $cx++) {
+                $px = $cy * (1 + $width * $channels_out) + 1 + $cx * $channels_out;
+                $non_white = false;
+                for ($ch = 0; $ch < $channels_out; $ch++) {
+                    if (ord($raw_out[$px + $ch]) < $white_thresh) { $non_white = true; break; }
+                }
+                if ($non_white) { $crop_bottom = $cy; $found = true; break; }
+            }
+        }
+
+        // Scan from left
+        $found = false;
+        for ($cx = 0; $cx < $width && !$found; $cx++) {
+            for ($cy = $crop_top; $cy <= $crop_bottom; $cy++) {
+                $px = $cy * (1 + $width * $channels_out) + 1 + $cx * $channels_out;
+                $non_white = false;
+                for ($ch = 0; $ch < $channels_out; $ch++) {
+                    if (ord($raw_out[$px + $ch]) < $white_thresh) { $non_white = true; break; }
+                }
+                if ($non_white) { $crop_left = $cx; $found = true; break; }
+            }
+        }
+
+        // Scan from right
+        $found = false;
+        for ($cx = $width - 1; $cx >= 0 && !$found; $cx--) {
+            for ($cy = $crop_top; $cy <= $crop_bottom; $cy++) {
+                $px = $cy * (1 + $width * $channels_out) + 1 + $cx * $channels_out;
+                $non_white = false;
+                for ($ch = 0; $ch < $channels_out; $ch++) {
+                    if (ord($raw_out[$px + $ch]) < $white_thresh) { $non_white = true; break; }
+                }
+                if ($non_white) { $crop_right = $cx; $found = true; break; }
+            }
+        }
+
+        // Apply crop with 8px padding (stay within image bounds)
+        $pad = 8;
+        $crop_top    = max(0, $crop_top - $pad);
+        $crop_bottom = min($height - 1, $crop_bottom + $pad);
+        $crop_left   = max(0, $crop_left - $pad);
+        $crop_right  = min($width - 1, $crop_right + $pad);
+
+        $crop_w = $crop_right - $crop_left + 1;
+        $crop_h = $crop_bottom - $crop_top + 1;
+
+        if ($crop_w > 0 && $crop_h > 0 && ($crop_w < $width || $crop_h < $height)) {
+            $old_w = $width;
+            $old_h = $height;
+            $old_stride = 1 + $width * $channels_out;
+            $new_stride = 1 + $crop_w * $channels_out;
+            $cropped = '';
+            for ($cy = $crop_top; $cy <= $crop_bottom; $cy++) {
+                $cropped .= "\x00"; // filter byte
+                $src_off = $cy * $old_stride + 1 + $crop_left * $channels_out;
+                $cropped .= substr($raw_out, $src_off, $crop_w * $channels_out);
+            }
+            $raw_out = $cropped;
+            $width = $crop_w;
+            $height = $crop_h;
+            tfcap_log("embedImage: cropped {$crop_w}x{$crop_h} from {$old_w}x{$old_h}");
+        }
+        // ── End crop ────────────────────────────────────────────────────────
 
         // ── Nearest-neighbor resize (alpha path only) ──────────────────────────
         if ( $width > $max_w || $height > $max_h ) {
@@ -1334,14 +1418,6 @@ function tfcap_generate_pdf($form_data) {
 
         $guarantee_checked = (tfcap_by_key($fields, 'checkbox_68') === '1');
         $pdf->checkbox("I/We have read, understood and agree to the Directors' Guarantee", $guarantee_checked);
-
-        // OFFICE USE ONLY
-        $pdf->sectionHeader('THE FUN DEPOT — OFFICE USE ONLY');
-        $pdf->readOnlyTwoCol('Date Received:', '', 'Administration Check By:', '');
-        $pdf->readOnlyTwoCol('Approved By:', '', 'Approval Date:', '');
-        $pdf->readOnlyField('Signature of Approver:');
-        $pdf->readOnlyField('Account Name:');
-        $pdf->readOnlyTwoCol('Approval Letter Sent (Email/Post + Date):', '', 'Customer Managed By:', '');
 
         // FOOTER
         $pdf->checkPage(40);
