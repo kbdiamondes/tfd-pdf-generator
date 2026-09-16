@@ -3,7 +3,7 @@
  * Plugin Name: Credit Application PDF
  * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.17.6
+ * Version: 1.17.7
  * Author: keithdoesmarketing.com
  * Requires PHP: 7.0
  * Requires Plugins: ninja-forms
@@ -709,8 +709,8 @@ class TFCAP_PDF {
             if ($img_b64) {
                 // White background behind signature (prevents transparent PNG fading)
                 $this->raw("q 1 1 1 rg " . ($box_x + 8) . " " . ($y - $box_h + 8) . " " . ($box_w - 16) . " " . ($box_h - 16) . " re f Q\n");
-                // Embed at native resolution — no resize — let PDF reader scale
-                $has_sig = $this->embedImageNoResize($box_x + 8, $y - $box_h + 8, $box_w - 16, $box_h - 16, $img_b64);
+                // Scale to fit box — maintain aspect ratio
+                $has_sig = $this->embedImage($box_x + 8, $y - $box_h + 8, $box_w - 16, $box_h - 16, $img_b64);
             }
         }
 

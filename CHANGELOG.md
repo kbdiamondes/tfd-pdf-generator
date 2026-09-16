@@ -1,5 +1,10 @@
 # TFD Credit Application PDF Generator — Changelog
 
+## v1.17.7 (2026-09-16)
+- Fixed signature overflow — reverted to embedImage() which scales to fit box
+- Signature now scales 2x down from 1000×400 to fit 500×200 box
+- Box aspect ratio (2.5:1) matches canvas aspect ratio (2.5:1) perfectly
+
 ## v1.17.6 (2026-09-16)
 - Fixed signature quality — embed at native 1000×400 resolution with no resize
 - Added embedImageNoResize() method for signatures — preserves every pixel of thin strokes
