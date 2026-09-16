@@ -1,5 +1,12 @@
 # TFD Credit Application PDF Generator — Changelog
 
+## v1.19.0 (2026-09-16)
+- NFF form now matches Word doc exactly — added Guarantor 2 section and Date fields
+- Added date_52, date_60, date_66 fields for Endorsement and Guarantor dates
+- Added Guarantor 2 section (textbox_62-64, signature_65, date_66)
+- Updated PDF rendering to display both Guarantors with proper headings
+- Updated auto-fill script template for new field structure
+
 ## v1.18.1 (2026-09-16)
 - Fixed text overlap — fieldRow now uses dynamic label width based on actual label length
 - Fixed twoColField — both columns now use dynamic label widths
