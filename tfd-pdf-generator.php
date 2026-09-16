@@ -3,7 +3,7 @@
  * Plugin Name: Credit Application PDF
  * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.17.5
+ * Version: 1.17.6
  * Author: keithdoesmarketing.com
  * Requires PHP: 7.0
  * Requires Plugins: ninja-forms
@@ -709,7 +709,8 @@ class TFCAP_PDF {
             if ($img_b64) {
                 // White background behind signature (prevents transparent PNG fading)
                 $this->raw("q 1 1 1 rg " . ($box_x + 8) . " " . ($y - $box_h + 8) . " " . ($box_w - 16) . " " . ($box_h - 16) . " re f Q\n");
-                $has_sig = $this->embedImage($box_x + 8, $y - $box_h + 8, $box_w - 16, $box_h - 16, $img_b64);
+                // Embed at native resolution — no resize — let PDF reader scale
+                $has_sig = $this->embedImageNoResize($box_x + 8, $y - $box_h + 8, $box_w - 16, $box_h - 16, $img_b64);
             }
         }
 
@@ -878,6 +879,135 @@ class TFCAP_PDF {
         ];
         $img_idx = count($this->images);
         $this->raw("q {$final_w} 0 0 {$final_h} {$x} {$y} cm /I{$img_idx} Do Q\n");
+        return true;
+    }
+
+    // Embed a base64 PNG at native resolution — no resize, no quality loss
+    private function embedImageNoResize($x, $y, $max_w, $max_h, $data_uri) {
+        if (preg_match('/data:image\/(\w+);base64,(.*)/', $data_uri, $m)) {
+            $b64 = $m[2];
+        } else {
+            return false;
+        }
+
+        $png_data = base64_decode($b64);
+        if (!$png_data || strlen($png_data) < 8) return false;
+
+        // Verify PNG signature
+        if (substr($png_data, 0, 8) !== "\x89PNG\r\n\x1a\n") return false;
+
+        // Parse PNG chunks
+        $pos = 8;
+        $len = strlen($png_data);
+        $idat = '';
+        $width = $height = $bit_depth = $color_type = 0;
+
+        while ($pos < $len) {
+            if ($pos + 8 > $len) break;
+            $chunk_len = unpack('N', substr($png_data, $pos, 4))[1];
+            $chunk_type = substr($png_data, $pos + 4, 4);
+            $chunk_data = substr($png_data, $pos + 8, $chunk_len);
+
+            switch ($chunk_type) {
+                case 'IHDR':
+                    $width = unpack('N', substr($chunk_data, 0, 4))[1];
+                    $height = unpack('N', substr($chunk_data, 4, 4))[1];
+                    $bit_depth = ord($chunk_data[8]);
+                    $color_type = ord($chunk_data[9]);
+                    break;
+                case 'IDAT':
+                    $idat .= $chunk_data;
+                    break;
+                case 'IEND':
+                    break 2;
+            }
+
+            $pos += 12 + $chunk_len;
+        }
+
+        if (!$width || !$height || !$idat) return false;
+
+        $has_alpha = ($color_type === 4 || $color_type === 6);
+
+        tfcap_log("embedImageNoResize: PNG {$width}x{$height}, color_type={$color_type}, has_alpha=" . ($has_alpha ? 'yes' : 'no'));
+
+        // No alpha — pass IDAT straight through
+        if (!$has_alpha) {
+            $colors = ($color_type === 0) ? 1 : 3;
+            $colorspace = ($color_type === 0) ? '/DeviceGray' : '/DeviceRGB';
+
+            $this->images[] = [
+                'data' => $idat,
+                'w' => $width,
+                'h' => $height,
+                'filter' => '/FlateDecode',
+                'colorspace' => $colorspace,
+                'bit_depth' => $bit_depth,
+                'decode_parms' => "<< /Predictor 15 /Colors {$colors} /BitsPerComponent {$bit_depth} /Columns {$width} >>",
+            ];
+            $img_idx = count($this->images);
+            $this->raw("q {$width} 0 0 {$height} {$x} {$y} cm /I{$img_idx} Do Q\n");
+            return true;
+        }
+
+        // Has alpha — flatten onto white at native resolution (no resize)
+        $channels_in = ($color_type === 6) ? 4 : 2;
+        $channels_out = ($color_type === 6) ? 3 : 1;
+        $colorspace = ($color_type === 6) ? '/DeviceRGB' : '/DeviceGray';
+
+        $filtered = @gzuncompress($idat);
+        if ($filtered === false) { tfcap_log("embedImageNoResize: gzuncompress failed"); return false; }
+
+        $row_stride = 1 + $width * $channels_in;
+        $prev_raw = str_repeat("\x00", $width * $channels_in);
+        $raw_out = '';
+
+        for ($y_row = 0; $y_row < $height; $y_row++) {
+            $offset = $y_row * $row_stride;
+            $filter_byte = ord($filtered[$offset]);
+            $row_bytes = substr($filtered, $offset + 1, $width * $channels_in);
+
+            $row_raw = tfcap_png_reverse_filter($filter_byte, $row_bytes, $prev_raw, $channels_in);
+            $prev_raw = $row_raw;
+
+            $out_row = "\x00";
+            for ($x_col = 0; $x_col < $width; $x_col++) {
+                $px = $x_col * $channels_in;
+
+                if ($color_type === 6) {
+                    $r = ord($row_raw[$px]);
+                    $g = ord($row_raw[$px + 1]);
+                    $b = ord($row_raw[$px + 2]);
+                    $a = ord($row_raw[$px + 3]);
+                    // Alpha blend onto white
+                    $out_row .= chr((int)(($r * $a + 255 * (255 - $a)) / 255));
+                    $out_row .= chr((int)(($g * $a + 255 * (255 - $a)) / 255));
+                    $out_row .= chr((int)(($b * $a + 255 * (255 - $a)) / 255));
+                } else {
+                    $gray = ord($row_raw[$px]);
+                    $a = ord($row_raw[$px + 1]);
+                    $out_row .= chr((int)(($gray * $a + 255 * (255 - $a)) / 255));
+                }
+            }
+            $raw_out .= $out_row;
+        }
+
+        $compressed_out = @gzcompress($raw_out, 6);
+        if (!$compressed_out) { tfcap_log("embedImageNoResize: gzcompress failed"); return false; }
+
+        tfcap_log("embedImageNoResize: flattened RGB=" . strlen($raw_out) . " bytes, native {$width}x{$height}");
+
+        $this->images[] = [
+            'data' => $compressed_out,
+            'w' => $width,
+            'h' => $height,
+            'filter' => '/FlateDecode',
+            'colorspace' => $colorspace,
+            'bit_depth' => $bit_depth,
+            'decode_parms' => "<< /Predictor 15 /Colors {$channels_out} /BitsPerComponent {$bit_depth} /Columns {$width} >>",
+        ];
+        $img_idx = count($this->images);
+        $this->raw("q {$width} 0 0 {$height} {$x} {$y} cm /I{$img_idx} Do Q\n");
         return true;
     }
 

@@ -1,5 +1,10 @@
 # TFD Credit Application PDF Generator — Changelog
 
+## v1.17.6 (2026-09-16)
+- Fixed signature quality — embed at native 1000×400 resolution with no resize
+- Added embedImageNoResize() method for signatures — preserves every pixel of thin strokes
+- PDF reader scales the image to fit the box — no quality loss from our code
+
 ## v1.17.5 (2026-09-16)
 - Fixed word wrapping for long words (emails, addresses) — splits at character boundaries
 - Increased signature box to 500×200 to match 1000×400 canvas ratio exactly
