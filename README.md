@@ -40,3 +40,16 @@ Logs are written to `wp-content/uploads/tfcap-pdfs/debug.log`. Check this file i
 ## License
 
 Private — The Fun Depot / KGO Enterprises Pty Ltd
+
+## Release Workflow
+
+When Keith says **"push to GitHub"**, do both steps:
+
+1. **Git push** — commit changes and push to `master`
+2. **Create a GitHub Release** — go to repo → Releases → Create new release
+   - Tag: `v{version}` (match the `Version:` in plugin header)
+   - Title: `v{version}` + short summary
+   - Notes: copy from CHANGELOG.md
+   - Publish release
+
+The auto-updater (built into v1.14.0+) checks `releases/latest` daily. Publishing a release triggers WP to show "Update available" → one-click install.
