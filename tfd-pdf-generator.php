@@ -3,7 +3,7 @@
  * Plugin Name: Credit Application PDF
  * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.17.1
+ * Version: 1.17.2
  * Author: keithdoesmarketing.com
  * Requires PHP: 7.0
  * Requires Plugins: ninja-forms
@@ -542,9 +542,9 @@ class TFCAP_PDF {
         $y = $this->getY();
         // Light grey background
         $this->raw("q 0.95 0.95 0.95 rg " . self::MARGIN . " " . ($y - 2) . " " . (self::PAGE_W - 2 * self::MARGIN) . " 12 re f Q\n");
-        $this->text(self::MARGIN + 2, $y, $this->truncate($label, 140, 8), 8, [153, 153, 153]);
+        $this->text(self::MARGIN + 2, $y, $label, 8, [153, 153, 153]);
         if ($value) {
-            $this->text(self::MARGIN + $label_w + 2, $y, $this->truncate($value, 200, 9), 9, [153, 153, 153]);
+            $this->text(self::MARGIN + $label_w + 2, $y, $value, 9, [153, 153, 153]);
         }
         $this->setY($y - 14);
     }
@@ -555,10 +555,10 @@ class TFCAP_PDF {
         $mid = self::PAGE_W / 2;
         // Light grey background
         $this->raw("q 0.95 0.95 0.95 rg " . self::MARGIN . " " . ($y - 2) . " " . (self::PAGE_W - 2 * self::MARGIN) . " 12 re f Q\n");
-        $this->text(self::MARGIN + 2, $y, $this->truncate($label1, 100, 8), 8, [153, 153, 153]);
-        if ($val1) $this->text(self::MARGIN + 112, $y, $this->truncate($val1, 120, 9), 9, [153, 153, 153]);
-        $this->text($mid + 2, $y, $this->truncate($label2, 100, 8), 8, [153, 153, 153]);
-        if ($val2) $this->text($mid + 112, $y, $this->truncate($val2, 120, 9), 9, [153, 153, 153]);
+        $this->text(self::MARGIN + 2, $y, $label1, 8, [153, 153, 153]);
+        if ($val1) $this->text(self::MARGIN + 112, $y, $val1, 9, [153, 153, 153]);
+        $this->text($mid + 2, $y, $label2, 8, [153, 153, 153]);
+        if ($val2) $this->text($mid + 112, $y, $val2, 9, [153, 153, 153]);
         $this->setY($y - 14);
     }
 
@@ -583,9 +583,7 @@ class TFCAP_PDF {
         $this->checkPage(14);
         $y = $this->getY();
         $this->text(self::MARGIN, $y, $label, 9, [51, 51, 51], 'B');
-        $val_x = self::MARGIN + $label_w;
-        $val_max_w = self::PAGE_W - self::MARGIN - $val_x;
-        $this->text($val_x, $y, $this->truncate($value ?: '—', $val_max_w, 10), 10, [26, 26, 26]);
+        $this->text(self::MARGIN + $label_w, $y, $value ?: '—', 10, [26, 26, 26]);
         $this->setY($y - 14);
     }
 
@@ -593,28 +591,13 @@ class TFCAP_PDF {
         $this->checkPage(14);
         $y = $this->getY();
         $mid = self::PAGE_W / 2;
-        // Value column: start after label, end before next column label
         $val1_x = self::MARGIN + 100;
-        $val1_max_w = $mid - $val1_x - 6; // gap before col2 label
         $val2_x = $mid + 100;
-        $val2_max_w = self::PAGE_W - self::MARGIN - $val2_x;
         $this->text(self::MARGIN, $y, $label1, 9, [51, 51, 51], 'B');
-        $this->text($val1_x, $y, $this->truncate($value1 ?: '—', $val1_max_w, 10), 10, [26, 26, 26]);
+        $this->text($val1_x, $y, $value1 ?: '—', 10, [26, 26, 26]);
         $this->text($mid, $y, $label2, 9, [51, 51, 51], 'B');
-        $this->text($val2_x, $y, $this->truncate($value2 ?: '—', $val2_max_w, 10), 10, [26, 26, 26]);
+        $this->text($val2_x, $y, $value2 ?: '—', 10, [26, 26, 26]);
         $this->setY($y - 14);
-    }
-
-    // Truncate text to fit within $max_w points (approx 5pt per char at size 10)
-    private function truncate($text, $max_w, $size = 10) {
-        if (!$text) return '—';
-        $pt_per_char = $size * 0.52; // approximate for Helvetica
-        $max_chars = (int)floor($max_w / $pt_per_char);
-        if ($max_chars < 3) $max_chars = 3;
-        if (mb_strlen($text) > $max_chars) {
-            return mb_substr($text, 0, $max_chars - 1) . '…';
-        }
-        return $text;
     }
 
     function note($text) {
@@ -787,33 +770,47 @@ class TFCAP_PDF {
             $raw_out .= $out_row;
         }
 
-        // ── Nearest-neighbor resize (alpha path only) ──────────────────────────
+        // ── Bilinear resize (alpha path only) ─────────────────────────────────
         if ( $width > $max_w || $height > $max_h ) {
             $scale   = min( $max_w / $width, $max_h / $height );
             $final_w = (int) floor( $width  * $scale );
             $final_h = (int) floor( $height * $scale );
 
-            // Row stride in $raw_out: filter byte (1) + pixel data ($width * $channels_out)
             $row_stride = 1 + $width * $channels_out;
             $resized    = '';
 
             for ( $ry = 0; $ry < $final_h; $ry++ ) {
-                $src_y    = (int) floor( $ry / $scale );
-                $resized .= "\x00"; // filter byte = None for every output row
+                $src_yf = $ry / $scale;
+                $src_y0 = (int) floor($src_yf);
+                $src_y1 = min($src_y0 + 1, $height - 1);
+                $fy = $src_yf - $src_y0;
+
+                $resized .= "\x00"; // filter byte
 
                 for ( $rx = 0; $rx < $final_w; $rx++ ) {
-                    $src_x   = (int) floor( $rx / $scale );
-                    // CORRECT offset — stride accounts for filter byte per source row
-                    $src_off = $src_y * $row_stride + 1 + $src_x * $channels_out;
-                    $resized .= substr( $raw_out, $src_off, $channels_out );
+                    $src_xf = $rx / $scale;
+                    $src_x0 = (int) floor($src_xf);
+                    $src_x1 = min($src_x0 + 1, $width - 1);
+                    $fx = $src_xf - $src_x0;
+
+                    // Bilinear sample from 4 neighbors
+                    for ($c = 0; $c < $channels_out; $c++) {
+                        $v00 = ord($raw_out[$src_y0 * $row_stride + 1 + $src_x0 * $channels_out + $c]);
+                        $v10 = ord($raw_out[$src_y0 * $row_stride + 1 + $src_x1 * $channels_out + $c]);
+                        $v01 = ord($raw_out[$src_y1 * $row_stride + 1 + $src_x0 * $channels_out + $c]);
+                        $v11 = ord($raw_out[$src_y1 * $row_stride + 1 + $src_x1 * $channels_out + $c]);
+
+                        $top = $v00 + ($v10 - $v00) * $fx;
+                        $bot = $v01 + ($v11 - $v01) * $fx;
+                        $val = (int) round($top + ($bot - $top) * $fy);
+                        $resized .= chr(max(0, min(255, $val)));
+                    }
                 }
             }
 
             $raw_out = $resized;
-            $final_w = $final_w; // used below
-            $final_h = $final_h;
 
-            error_log( "TFCAP resize: {$width}x{$height} → {$final_w}x{$final_h} (scale={$scale})" );
+            error_log( "TFCAP bilinear resize: {$width}x{$height} → {$final_w}x{$final_h} (scale={$scale})" );
 
         } else {
             $final_w = $width;
@@ -1023,9 +1020,9 @@ function tfcap_generate_pdf($form_data) {
         $y = TFCAP_PDF::PAGE_H - TFCAP_PDF::MARGIN;
 
         // HEADER
-        $pdf->text(TFCAP_PDF::MARGIN, $y, 'CREDIT ACCOUNT APPLICATION', 18, [26, 26, 26], 'B');
-        $pdf->text(TFCAP_PDF::MARGIN, $y - 16, 'KGO Enterprises Pty Ltd T/A The Fun Depot', 9, [102, 102, 102]);
-        $right_x = TFCAP_PDF::PAGE_W - TFCAP_PDF::MARGIN - 220;
+        $pdf->text(TFCAP_PDF::MARGIN, $y, 'CREDIT ACCOUNT APPLICATION', 15, [26, 26, 26], 'B');
+        $pdf->text(TFCAP_PDF::MARGIN, $y - 14, 'KGO Enterprises Pty Ltd T/A The Fun Depot', 9, [102, 102, 102]);
+        $right_x = TFCAP_PDF::PAGE_W - TFCAP_PDF::MARGIN - 190;
         $pdf->text($right_x, $y, 'ABN 63 667 911 944', 8, [102, 102, 102]);
         $pdf->text($right_x, $y - 10, '30 Emerald Road, Maddington WA 6109', 8, [102, 102, 102]);
         $pdf->text($right_x, $y - 20, '0406 161 959 | bookings@thefundepot.com.au', 8, [102, 102, 102]);

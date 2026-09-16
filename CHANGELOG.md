@@ -1,5 +1,10 @@
 # TFD Credit Application PDF Generator — Changelog
 
+## v1.17.2 (2026-09-16)
+- Fixed header overlap — reduced title font size from 18pt to 15pt, adjusted right column position
+- Removed text truncation — emails and addresses now display in full
+- Improved signature quality — replaced nearest-neighbor resize with bilinear interpolation for smoother rendering
+
 ## v1.17.1 (2026-09-16)
 - Fixed broken WP native updater — removed Update URI header that caused silent failures
 - "Update Now" button now runs a reliable manual update via AJAX (download → extract → replace)
