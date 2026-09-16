@@ -1,8 +1,6 @@
 # TFD Credit Application — Auto-Fill Script
 
-Paste this into the browser console on the credit application form page. It fills all 68 fields with realistic mock data.
-
-> **⚠️ NF3 Field IDs change after import.** After re-importing the form, you must update the `nf-field-XXX` IDs in the script. Right-click each field → Inspect → find the `id` attribute on the input element.
+Paste this into the browser console on the credit application form page. It fills all fields with realistic mock data.
 
 ## How to Use
 
@@ -36,94 +34,119 @@ Paste everything below into the browser console on the form page:
     return true;
   }
 
-  // ── Mock Data ──────────────────────────────────────────────
-  const fields = {
-    // 1. Applicant Details
-    'nf-field-XXX': 'Perth Party Supplies Pty Ltd',   // textbox_2: Company Name
-    'nf-field-XXX': '123 456 789',                     // textbox_3: ACN
-    'nf-field-XXX': '63 667 911 944',                  // textbox_4: ABN
-    'nf-field-XXX': 'Perth Party Co',                   // textbox_7: Trading Name
+  // ── Find field ID by NF key name ───────────────────────────
+  // NF3 renders fields as nf-field-XXX where XXX matches the
+  // field's internal ID. We find them by looking for the
+  // nf-field-wrap element with data-field-id matching our key.
+  function findFieldId(keyName) {
+    // Method 1: Look for nf-field elements by their label text
+    const wraps = document.querySelectorAll('.nf-field-container');
+    for (const wrap of wraps) {
+      const input = wrap.querySelector('input, textarea, select');
+      if (input && input.id && input.id.includes(keyName.replace(/[a-z_]/g, ''))) {
+        return input.id;
+      }
+    }
+    // Method 2: Try common NF3 ID patterns
+    // NF3 assigns sequential IDs starting from a base.
+    // We can't predict them, so we'll scan all inputs.
+    return null;
+  }
 
-    // 2. Accounts Contact
-    'nf-field-XXX': 'Sarah Mitchell',                  // textbox_10: Contact Name
-    'nf-field-XXX': 'Accounts Manager',                // textbox_11: Position
-    'nf-field-XXX': 'accounts@perthpartysupplies.com.au', // email_12: Email
-    'nf-field-XXX': '0412 345 678',                    // phone_13: Phone
-    'nf-field-XXX': '42 Wellington Street, Perth WA 6000', // textbox_14: Postal Address
-    'nf-field-XXX': '6000',                            // textbox_15: Postcode
+  // ── Auto-discover all NF3 field IDs ────────────────────────
+  // Scans the DOM for all nf-field-* elements and maps them
+  const allFields = {};
+  document.querySelectorAll('[id^="nf-field-"]').forEach(el => {
+    const match = el.id.match(/^nf-field-(\d+)$/);
+    if (match) {
+      allFields[match[1]] = el;
+    }
+  });
 
-    // 3. Business Address
-    'nf-field-XXX': '15 Industrial Drive, Malaga WA 6090', // textbox_17: Business Address
-    'nf-field-XXX': '6090',                            // textbox_18: Postcode
-    'nf-field-XXX': '08 9234 5678',                    // phone_19: Landline
-    'nf-field-XXX': '0401 234 567',                    // phone_20: Mobile
-
-    // 4. Directors
-    'nf-field-XXX': 'James Mitchell',                  // textbox_24: Director 1 Name
-    'nf-field-XXX': '0423 456 789',                    // phone_25: Director 1 Phone
-    'nf-field-XXX': '8 Banksia Crescent, Joondalup WA 6027', // textbox_26: Director 1 Address
-    'nf-field-XXX': '6027',                            // textbox_27: Director 1 Postcode
-    'nf-field-XXX': 'Karen Mitchell',                  // textbox_29: Director 2 Name
-    'nf-field-XXX': '0434 567 890',                    // phone_30: Director 2 Phone
-    'nf-field-XXX': '22 Palm Drive, Dianella WA 6059', // textbox_31: Director 2 Address
-    'nf-field-XXX': '6059',                            // textbox_32: Director 2 Postcode
-
-    // 5. Banking
-    'nf-field-XXX': 'Commonwealth Bank of Australia',  // textbox_34: Bank Name
-    'nf-field-XXX': 'Morley Branch — BSB 066 102',    // textbox_35: Branch
-
-    // 6. Trade References
-    'nf-field-XXX': 'Party World Australia',           // textbox_39: Ref 1 Company
-    'nf-field-XXX': '08 9200 1234',                    // phone_40: Ref 1 Phone
-    'nf-field-XXX': 'Bounce House Rentals WA',         // textbox_41: Ref 2 Company
-    'nf-field-XXX': '08 9300 5678',                    // phone_42: Ref 2 Phone
-    'nf-field-XXX': 'Jumping Castles Direct',          // textbox_43: Ref 3 Company
-    'nf-field-XXX': '08 9400 9012',                    // phone_44: Ref 3 Phone
-
-    // 8. Endorsement
-    'nf-field-XXX': 'Perth Party Supplies Pty Ltd',    // textbox_49: Company Name
-    'nf-field-XXX': 'James Mitchell',                  // textbox_50: Full Name
-    'nf-field-XXX': 'Director',                        // textbox_51: Position
-    'nf-field-XXX': '16/09/2026',                      // date_52: Date
-
-    // 9. Guarantee — Guarantor 1
-    'nf-field-XXX': 'James Mitchell',                  // textbox_56: Full Name
-    'nf-field-XXX': 'Director',                        // textbox_57: Relationship
-    'nf-field-XXX': '8 Banksia Crescent, Joondalup WA 6027', // textbox_58: Address
-    'nf-field-XXX': '16/09/2026',                      // date_60: Date
-
-    // 9. Guarantee — Guarantor 2
-    'nf-field-XXX': 'Karen Mitchell',                  // textbox_62: Full Name
-    'nf-field-XXX': 'Director',                        // textbox_63: Relationship
-    'nf-field-XXX': '22 Palm Drive, Dianella WA 6059', // textbox_64: Address
-    'nf-field-XXX': '16/09/2026',                      // date_66: Date
+  // ── Mock Data (by field key → value) ───────────────────────
+  // We'll match by placeholder or label text since NF3 IDs are dynamic
+  const mockData = {
+    // Text inputs — match by placeholder text
+    'Full Name or Company Name': 'Perth Party Supplies Pty Ltd',
+    'A.C.N.': '123 456 789',
+    'A.B.N.': '63 667 911 944',
+    'Please specify': 'Special Event Hire',
+    'Trading Name': 'Perth Party Co',
+    'Mr/Mrs/Ms': 'Sarah Mitchell',
+    'Position': 'Accounts Manager',
+    'accounts@company.com.au': 'accounts@perthpartysupplies.com.au',
+    '0400 000 000': '0412 345 678',
+    'Street Address, Suburb': '42 Wellington Street, Perth WA 6000',
+    '6000': '6000',
+    '08 9000 0000': '08 9234 5678',
+    'e.g. Commonwealth Bank': 'Commonwealth Bank of Australia',
+    'Branch name or BSB': 'Morley Branch — BSB 066 102',
+    'Company Name': 'Party World Australia',
+    'Phone Number': '08 9200 1234',
+    'Company or Applicant Name': 'Perth Party Supplies Pty Ltd',
+    'Full Name': 'James Mitchell',
+    'Director / Secretary': 'Director',
+    'Guarantor Name': 'James Mitchell',
+    'e.g. Director': 'Director',
+    'Residential Address': '8 Banksia Crescent, Joondalup WA 6027',
+    'Guarantor 2 Name': 'Karen Mitchell',
+    'dd/mm/yyyy': '16/09/2026',
+    'Name': 'Keith',
+    'Signature': 'Approved',
+    'Account Name': 'Perth Party Supplies Pty Ltd',
+    'e.g. Email 16/09/2026': 'Email 16/09/2026',
   };
 
   // ── Fill text/email/phone/date fields ─────────────────────
   let filled = 0;
-  for (const [id, val] of Object.entries(fields)) {
-    if (setVal(id, val)) filled++;
+  for (const [id, el] of Object.entries(allFields)) {
+    const input = el.querySelector('input, textarea, select');
+    if (!input) continue;
+
+    const placeholder = input.getAttribute('placeholder') || '';
+    const value = mockData[placeholder];
+
+    if (value && input.value !== value) {
+      const setter = Object.getOwnPropertyDescriptor(
+        input.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype,
+        'value'
+      )?.set;
+      if (setter) setter.call(input, value);
+      else input.value = value;
+      input.dispatchEvent(new Event('input',  { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      input.dispatchEvent(new Event('blur',   { bubbles: true }));
+      filled++;
+    }
   }
 
   // ── Radio buttons ──────────────────────────────────────────
-  // Applicant type: "Pty Ltd Company" = index 0 (nf-field-XXX-0)
-  // Registered biz name: "Yes" = index 0 (nf-field-XXX-0)
-  // Update these IDs after import:
-  // const radio189 = document.getElementById('nf-field-XXX-0');
-  // if (radio189) { radio189.click(); filled++; }
-  // const radio192 = document.getElementById('nf-field-XXX-0');
-  // if (radio192) { radio192.click(); filled++; }
+  // Find radio groups by label text and click the right option
+  document.querySelectorAll('.nf-field-radio').forEach(field => {
+    const label = field.querySelector('.nf-option-label')?.textContent?.trim();
+    const options = field.querySelectorAll('input[type="radio"]');
 
-  // ── Checkboxes (Terms + Guarantee) ────────────────────────
-  // Update these IDs after import:
-  // const cbTerms = document.getElementById('nf-field-XXX');
-  // if (cbTerms && !cbTerms.checked) { cbTerms.click(); filled++; }
-  // const cbGuarantee = document.getElementById('nf-field-XXX');
-  // if (cbGuarantee && !cbGuarantee.checked) { cbGuarantee.click(); filled++; }
+    if (field.closest('.nf-field-container')?.querySelector('.nf-field-label')?.textContent?.includes('Applicant is a')) {
+      // Click "Pty Ltd Company" (first option)
+      if (options[0]) { options[0].click(); filled++; }
+    }
+    if (field.closest('.nf-field-container')?.querySelector('.nf-field-label')?.textContent?.includes('registered business name')) {
+      // Click "Yes" (first option)
+      if (options[0]) { options[0].click(); filled++; }
+    }
+  });
+
+  // ── Checkboxes ─────────────────────────────────────────────
+  document.querySelectorAll('.nf-field-checkbox').forEach(field => {
+    const checkbox = field.querySelector('input[type="checkbox"]');
+    if (checkbox && !checkbox.checked) {
+      checkbox.click();
+      filled++;
+    }
+  });
 
   // ── Signatures — draw mock cursive on canvas ──────────────
-  function drawSig(canvasId) {
-    const canvas = document.getElementById(canvasId);
+  function drawSig(canvas) {
     if (!canvas) return false;
     const ctx = canvas.getContext('2d');
     if (!ctx) return false;
@@ -158,87 +181,49 @@ Paste everything below into the browser console on the form page:
     ctx.quadraticCurveTo(0.50 * w, 0.60 * h, 0.92 * w, 0.68 * h);
     ctx.stroke();
 
+    // Trigger NF3 signature save
+    canvas.dispatchEvent(new Event('change', { bubbles: true }));
     return true;
   }
 
-  // Update these canvas IDs after import:
-  // if (drawSig('nf-field-XXX')) filled++;  // Endorsement
-  // if (drawSig('nf-field-XXX')) filled++;  // Guarantor 1
-  // if (drawSig('nf-field-XXX')) filled++;  // Guarantor 2
+  document.querySelectorAll('canvas[id^="nf-field-"]').forEach(canvas => {
+    if (drawSig(canvas)) filled++;
+  });
 
   // ── Summary ────────────────────────────────────────────────
   console.log(`[TFCAP] ✅ Filled ${filled} fields with mock data.`);
+  if (filled === 0) {
+    console.warn('[TFCAP] No fields found. Make sure you are on the credit application form page.');
+    console.log('[TFCAP] Found NF3 fields:', Object.keys(allFields).length);
+    console.log('[TFCAP] All nf-field elements:', document.querySelectorAll('[id^="nf-field-"]').length);
+  }
 })();
 ```
 
 *(end of script)*
 
-## Mock Data Summary
+## How It Works
 
-| Field | NF Key | Value |
-|---|---|---|
-| Company | textbox_2 | Perth Party Supplies Pty Ltd |
-| ACN | textbox_3 | 123 456 789 |
-| ABN | textbox_4 | 63 667 911 944 |
-| Applicant type | listradio_5 | Pty Ltd Company (radio) |
-| Trading Name | textbox_7 | Perth Party Co |
-| Registered name | listradio_8 | Yes (radio) |
-| Contact Name | textbox_10 | Sarah Mitchell |
-| Position | textbox_11 | Accounts Manager |
-| Email | email_12 | accounts@perthpartysupplies.com.au |
-| Phone | phone_13 | 0412 345 678 |
-| Postal Address | textbox_14 | 42 Wellington Street, Perth WA 6000 |
-| Postcode | textbox_15 | 6000 |
-| Business Address | textbox_17 | 15 Industrial Drive, Malaga WA 6090 |
-| Business Postcode | textbox_18 | 6090 |
-| Landline | phone_19 | 08 9234 5678 |
-| Mobile | phone_20 | 0401 234 567 |
-| Director 1 Name | textbox_24 | James Mitchell |
-| Director 1 Phone | phone_25 | 0423 456 789 |
-| Director 1 Address | textbox_26 | 8 Banksia Crescent, Joondalup WA 6027 |
-| Director 1 Postcode | textbox_27 | 6027 |
-| Director 2 Name | textbox_29 | Karen Mitchell |
-| Director 2 Phone | phone_30 | 0434 567 890 |
-| Director 2 Address | textbox_31 | 22 Palm Drive, Dianella WA 6059 |
-| Director 2 Postcode | textbox_32 | 6059 |
-| Bank | textbox_34 | Commonwealth Bank of Australia |
-| Branch | textbox_35 | Morley Branch — BSB 066 102 |
-| Ref 1 Company | textbox_39 | Party World Australia |
-| Ref 1 Phone | phone_40 | 08 9200 1234 |
-| Ref 2 Company | textbox_41 | Bounce House Rentals WA |
-| Ref 2 Phone | phone_42 | 08 9300 5678 |
-| Ref 3 Company | textbox_43 | Jumping Castles Direct |
-| Ref 3 Phone | phone_44 | 08 9400 9012 |
-| Terms checkbox | checkbox_47 | ✅ Checked |
-| Endorsement Name | textbox_49 | Perth Party Supplies Pty Ltd |
-| Endorsement Signer | textbox_50 | James Mitchell |
-| Position | textbox_51 | Director |
-| Endorsement Sig | signature_52 | Mock cursive drawn |
-| Endorsement Date | date_52 | 16/09/2026 |
-| Guarantor 1 Name | textbox_56 | James Mitchell |
-| Relationship | textbox_57 | Director |
-| Guarantor 1 Address | textbox_58 | 8 Banksia Crescent, Joondalup WA 6027 |
-| Guarantor 1 Sig | signature_59 | Mock cursive drawn |
-| Guarantor 1 Date | date_60 | 16/09/2026 |
-| Guarantor 2 Name | textbox_62 | Karen Mitchell |
-| Relationship | textbox_63 | Director |
-| Guarantor 2 Address | textbox_64 | 22 Palm Drive, Dianella WA 6059 |
-| Guarantor 2 Sig | signature_65 | Mock cursive drawn |
-| Guarantor 2 Date | date_66 | 16/09/2026 |
-| Guarantee checkbox | checkbox_67 | ✅ Checked |
+The script auto-discovers NF3 field IDs by scanning the DOM for all `[id^="nf-field-"]` elements. It then matches fields by their **placeholder text** (which is stable across imports) rather than hardcoded NF3 IDs.
+
+| Match Method | Examples |
+|---|---|
+| Placeholder text | `"Full Name or Company Name"` → fills with `"Perth Party Supplies Pty Ltd"` |
+| Radio group labels | `"Applicant is a"` → clicks `"Pty Ltd Company"` |
+| Checkboxes | All checkboxes → checked |
+| Canvas signatures | All signature canvases → draws mock cursive |
 
 ## Troubleshooting
 
 | Error | Fix |
 |---|---|
 | `javascript is not defined` | You pasted `javascript:` prefix. Clear console, paste raw script only. |
-| `No Ninja Forms form found` | You're not on the credit application page. Navigate to the form first. |
-| Fields didn't fill | The form might use different field IDs. Right-click field → Inspect → check `id`. |
+| `Filled 0 fields` | You're not on the credit application page. Navigate to the form first. |
+| Some fields didn't fill | The placeholder text might have changed. Check the form's input placeholders. |
 
 ## Notes
 
 - Signatures are drawn as mock cursive on the canvas pads
 - Checkboxes (Terms + Guarantee) are checked by default
-- Optional fields (ACN, Director 2, Other) are left blank where typical
 - Script is non-destructive — refresh the page to clear everything
-- **NF3 IDs change after import** — update the `nf-field-XXX` placeholders before use
+- No hardcoded NF3 IDs — works after any re-import
