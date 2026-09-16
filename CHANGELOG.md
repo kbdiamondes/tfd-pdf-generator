@@ -1,5 +1,20 @@
 # TFD Credit Application PDF Generator — Changelog
 
+## v1.18.0 (2026-09-16)
+- Restored ALL content from Word document to match original form exactly
+- Section 1: Full labels ("Applicant's Full Name / Company Name", "A.C.N. (if a company)")
+- Section 2: Added "(Mr/Mrs/Ms)" and "(for invoices/statements)" to labels
+- Section 3: Changed to "Registered / Business Street Address:"
+- Section 4: Added note about Director's Guarantee in Section 9, "Phone / Mobile" label
+- Section 5: Added Privacy Act 1988 (Cth) reference to authorization note
+- Section 6: Added intro text "Please provide three (3) current trade references.", full labels
+- Section 7: Restored ALL 7 terms with full legal language, Privacy Act, URL references
+- Section 8: Added "(Company / Applicant Name)" and "(Director / Company Secretary)" to labels
+- Section 9: Restored full guarantee text with indemnity clause, "Residential Address" label
+- Added header intro text about payment terms and application instructions
+- Added footer instructional text about emailing and N/A
+- Added "Yes"/"No" to radio label mapper
+
 ## v1.17.7 (2026-09-16)
 - Fixed signature overflow — reverted to embedImage() which scales to fit box
 - Signature now scales 2x down from 1000×400 to fit 500×200 box

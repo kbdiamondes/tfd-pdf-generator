@@ -3,7 +3,7 @@
  * Plugin Name: Credit Application PDF
  * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.17.7
+ * Version: 1.18.0
  * Author: keithdoesmarketing.com
  * Requires PHP: 7.0
  * Requires Plugins: ninja-forms
@@ -1139,11 +1139,14 @@ function tfcap_radio_label($raw) {
         'sole_trader'              => 'Sole Trader',
         'partnership'              => 'Partnership',
         'pty_ltd_company'          => 'Pty Ltd Company',
+        'public_company'           => 'Public Company',
+        'individual'               => 'Individual',
         'other'                    => 'Other',
         'company'                  => 'Company',
         'trust'                    => 'Trust',
-        'individual'               => 'Individual',
         // Registered Business Name options
+        'yes'                      => 'Yes',
+        'no'                       => 'No',
         'same_as_applicant'        => 'Same as Applicant Name',
         'registered_business_name' => 'Registered Business Name',
     ];
@@ -1201,58 +1204,60 @@ function tfcap_generate_pdf($form_data) {
         $pdf->text($right_x, $y - 20, '0406 161 959 | bookings@thefundepot.com.au', 8, [102, 102, 102]);
         $pdf->line(TFCAP_PDF::MARGIN, $y - 26, TFCAP_PDF::PAGE_W - TFCAP_PDF::MARGIN, $y - 26, 1, [200, 200, 200]);
         $pdf->setY($y - 36);
+        $pdf->note('This application allows approved customers to pay after their event, within 30 days of the invoice date, instead of paying in full before the event. Please complete every section, sign where indicated, and return by email to bookings@thefundepot.com.au. Incomplete applications cannot be processed.');
 
         // 1. APPLICANT DETAILS
         $pdf->sectionHeader('1. Applicant Details');
-        $pdf->fieldRow('Applicant Full Name / Company:', tfcap_by_key($fields, 'textbox_2'));
-        $pdf->twoColField('A.C.N.:', tfcap_by_key($fields, 'textbox_3'), 'A.B.N.:', tfcap_by_key($fields, 'textbox_4'));
+        $pdf->fieldRow("Applicant's Full Name / Company Name:", tfcap_by_key($fields, 'textbox_2'));
+        $pdf->twoColField('A.C.N. (if a company):', tfcap_by_key($fields, 'textbox_3'), 'A.B.N.:', tfcap_by_key($fields, 'textbox_4'));
         $pdf->fieldRow('Applicant is a:', tfcap_radio_label(tfcap_by_key($fields, 'listradio_5')));
-        $pdf->fieldRow('Other details:', tfcap_by_key($fields, 'textbox_6'));
-        $pdf->fieldRow('Trading Name:', tfcap_by_key($fields, 'textbox_7'));
-        $pdf->fieldRow('Registered Business Name:', tfcap_radio_label(tfcap_by_key($fields, 'listradio_8')));
+        $pdf->fieldRow('If "Other", please give details:', tfcap_by_key($fields, 'textbox_6'));
+        $pdf->fieldRow('Trading Name (only if different from above):', tfcap_by_key($fields, 'textbox_7'));
+        $pdf->fieldRow('Is the trading name a registered business name?:', tfcap_radio_label(tfcap_by_key($fields, 'listradio_8')));
 
         // 2. ACCOUNTS CONTACT
         $pdf->sectionHeader('2. Accounts Contact Details');
-        $pdf->twoColField('Contact Name:', tfcap_by_key($fields, 'textbox_10'), 'Position Held:', tfcap_by_key($fields, 'textbox_11'));
-        $pdf->twoColField('Accounts Email:', tfcap_by_key($fields, 'email_12'), 'Direct Phone:', tfcap_by_key($fields, 'phone_13'));
+        $pdf->twoColField('Contact Name (Mr/Mrs/Ms):', tfcap_by_key($fields, 'textbox_10'), 'Position Held:', tfcap_by_key($fields, 'textbox_11'));
+        $pdf->twoColField('Accounts Email (for invoices/statements):', tfcap_by_key($fields, 'email_12'), 'Direct Phone:', tfcap_by_key($fields, 'phone_13'));
         $pdf->twoColField('Postal Address:', tfcap_by_key($fields, 'textbox_14'), 'Postcode:', tfcap_by_key($fields, 'textbox_15'));
 
         // 3. BUSINESS ADDRESS
         $pdf->sectionHeader('3. Business Address');
-        $pdf->twoColField('Business Address:', tfcap_by_key($fields, 'textbox_17'), 'Postcode:', tfcap_by_key($fields, 'textbox_18'));
+        $pdf->twoColField('Registered / Business Street Address:', tfcap_by_key($fields, 'textbox_17'), 'Postcode:', tfcap_by_key($fields, 'textbox_18'));
         $pdf->twoColField('Business Landline:', tfcap_by_key($fields, 'phone_19'), 'Mobile:', tfcap_by_key($fields, 'phone_20'));
 
         // 4. DIRECTORS
         $pdf->sectionHeader("4. Directors' Private Addresses");
-        $pdf->note('If the applicant is a company, details for each director are provided below.');
+        $pdf->note('If the applicant is a company, please provide details for each director. This information supports the Director\'s Guarantee in Section 9.');
         $pdf->subHeader('Director 1');
-        $pdf->twoColField('Full Name:', tfcap_by_key($fields, 'textbox_24'), 'Phone:', tfcap_by_key($fields, 'phone_25'));
+        $pdf->twoColField('Full Name:', tfcap_by_key($fields, 'textbox_24'), 'Phone / Mobile:', tfcap_by_key($fields, 'phone_25'));
         $pdf->twoColField('Address:', tfcap_by_key($fields, 'textbox_26'), 'Postcode:', tfcap_by_key($fields, 'textbox_27'));
-        $pdf->subHeader('Director 2');
-        $pdf->twoColField('Full Name:', tfcap_by_key($fields, 'textbox_29'), 'Phone:', tfcap_by_key($fields, 'phone_30'));
+        $pdf->subHeader('Director 2 (if applicable)');
+        $pdf->twoColField('Full Name:', tfcap_by_key($fields, 'textbox_29'), 'Phone / Mobile:', tfcap_by_key($fields, 'phone_30'));
         $pdf->twoColField('Address:', tfcap_by_key($fields, 'textbox_31'), 'Postcode:', tfcap_by_key($fields, 'textbox_32'));
 
         // 5. BANKING
         $pdf->sectionHeader('5. Banking Details');
-        $pdf->twoColField('Bank / Institution:', tfcap_by_key($fields, 'textbox_34'), 'Branch:', tfcap_by_key($fields, 'textbox_35'));
-        $pdf->note('I/We hereby authorise The Fun Depot (KGO Enterprises Pty Ltd) to make oral or written inquiries with the bank or financial institution named above to obtain information in support of this application.');
+        $pdf->twoColField('Name of Bank / Financial Institution:', tfcap_by_key($fields, 'textbox_34'), 'Branch:', tfcap_by_key($fields, 'textbox_35'));
+        $pdf->note('I/We hereby authorise The Fun Depot (KGO Enterprises Pty Ltd) to make oral or written inquiries with the bank or financial institution named above to obtain information in support of this application. Information will be handled in accordance with the Privacy Act 1988 (Cth).');
 
         // 6. TRADE REFERENCES
         $pdf->sectionHeader('6. Trade References');
-        $pdf->twoColField('Ref 1 — Company:', tfcap_by_key($fields, 'textbox_39'), 'Ref 1 — Phone:', tfcap_by_key($fields, 'phone_40'));
-        $pdf->twoColField('Ref 2 — Company:', tfcap_by_key($fields, 'textbox_41'), 'Ref 2 — Phone:', tfcap_by_key($fields, 'phone_42'));
-        $pdf->twoColField('Ref 3 — Company:', tfcap_by_key($fields, 'textbox_43'), 'Ref 3 — Phone:', tfcap_by_key($fields, 'phone_44'));
+        $pdf->note('Please provide three (3) current trade references.');
+        $pdf->twoColField('Reference 1 — Company Name:', tfcap_by_key($fields, 'textbox_39'), 'Phone Number:', tfcap_by_key($fields, 'phone_40'));
+        $pdf->twoColField('Reference 2 — Company Name:', tfcap_by_key($fields, 'textbox_41'), 'Phone Number:', tfcap_by_key($fields, 'phone_42'));
+        $pdf->twoColField('Reference 3 — Company Name:', tfcap_by_key($fields, 'textbox_43'), 'Phone Number:', tfcap_by_key($fields, 'phone_44'));
 
         // 7. TERMS
         $pdf->sectionHeader('7. Terms of Application');
         $terms = [
-            'I/We declare that the information provided in this application is true and correct.',
-            'I/We agree to notify The Fun Depot immediately of any change to the information provided.',
-            "I/We agree to be bound by The Fun Depot's Terms and Conditions of Hire.",
-            "Approval to pay on credit terms is granted at The Fun Depot's sole discretion.",
-            'The Fun Depot may disclose application details to a credit reporting body.',
-            'Approved credit terms apply only to invoices issued after written approval.',
-            'I certify that I am duly authorised to sign this application.',
+            'I/We declare that the information provided in this application is true and correct to the best of my/our knowledge.',
+            'I/We agree to notify The Fun Depot immediately, in writing, of any change to the information provided or to the circumstances outlined in this application, including any change in directors, shareholders, partnership or trusteeship.',
+            "I/We agree to be bound by these terms and by The Fun Depot's Terms and Conditions of Hire (available at perthbouncycastlehire.com.au/terms), which have been read and understood, including the payment terms at clause 5 and overdue account terms at clause 7.",
+            "I/We acknowledge that approval to pay on credit terms is granted at The Fun Depot's sole discretion and may be varied or withdrawn at any time, without liability.",
+            'I/We acknowledge that The Fun Depot may disclose application details and details of overdue accounts to a credit reporting body, in accordance with the Privacy Act 1988 (Cth).',
+            'I/We acknowledge that approved credit terms apply only to invoices issued after written approval is received, and that our standard deposit and pre-event payment terms continue to apply until that approval is confirmed in writing.',
+            'I certify that I am duly authorised to sign this application on behalf of the applicant.',
         ];
         foreach ($terms as $i => $t) {
             $pdf->checkPage(12);
@@ -1261,21 +1266,21 @@ function tfcap_generate_pdf($form_data) {
             $pdf->setY($y - 11);
         }
         $terms_checked = (tfcap_by_key($fields, 'checkbox_47') === '1');
-        $pdf->checkbox('I/We have read, understood and agree to the above Terms', $terms_checked);
+        $pdf->checkbox('I/We have read, understood and agree to the above: I / We Agree', $terms_checked);
 
         // 8. ENDORSEMENT
         $pdf->sectionHeader('8. Endorsement');
-        $pdf->fieldRow('Signed for and on behalf of:', tfcap_by_key($fields, 'textbox_49'));
-        $pdf->twoColField('Full Name:', tfcap_by_key($fields, 'textbox_50'), 'Position:', tfcap_by_key($fields, 'textbox_51'));
+        $pdf->fieldRow('Signed for and on behalf of (Company / Applicant Name):', tfcap_by_key($fields, 'textbox_49'));
+        $pdf->twoColField('Full Name (Director / Company Secretary):', tfcap_by_key($fields, 'textbox_50'), 'Position:', tfcap_by_key($fields, 'textbox_51'));
         $sig52 = tfcap_by_key($fields, 'signature_52');
         $pdf->signatureBox('Endorsement Signature', $sig52);
 
         // 9. GUARANTEE
         $pdf->sectionHeader("9. Directors' Guarantee and Indemnity");
-        $pdf->note('In consideration of The Fun Depot (KGO Enterprises Pty Ltd, ABN 63 667 911 944) agreeing to provide credit terms, we, the undersigned director(s), personally and unconditionally guarantee the due and punctual payment by the applicant of all money owing to The Fun Depot.');
-        $pdf->note('This guarantee remains in effect for all credit extended to the applicant by The Fun Depot until revoked in writing.');
-        $pdf->twoColField('Guarantor Name:', tfcap_by_key($fields, 'textbox_55'), 'Relationship:', tfcap_by_key($fields, 'textbox_56'));
-        $pdf->fieldRow('Guarantor Address:', tfcap_by_key($fields, 'textbox_57'));
+        $pdf->note("In consideration of The Fun Depot (KGO Enterprises Pty Ltd, ABN 63 667 911 944) agreeing to provide credit terms on the basis set out in this application and The Fun Depot's Terms and Conditions of Hire, we, the undersigned director(s), personally and unconditionally guarantee the due and punctual payment by the applicant of all money owing to The Fun Depot from time to time (\"the guaranteed amount\"). As a separate and additional obligation, we also agree to indemnify and keep indemnified The Fun Depot against all losses, costs, charges and expenses it may suffer or incur as a result of the applicant's failure or default in paying the guaranteed amount.");
+        $pdf->note('This guarantee remains in effect for all credit extended to the applicant by The Fun Depot until revoked in writing and acknowledged by The Fun Depot.');
+        $pdf->twoColField('Full Name:', tfcap_by_key($fields, 'textbox_55'), 'Relationship to Applicant (e.g. Director):', tfcap_by_key($fields, 'textbox_56'));
+        $pdf->fieldRow('Residential Address:', tfcap_by_key($fields, 'textbox_57'));
         $sig58 = tfcap_by_key($fields, 'signature_58');
         $pdf->signatureBox('Guarantor Signature', $sig58);
         $guarantee_checked = (tfcap_by_key($fields, 'checkbox_59') === '1');
@@ -1290,11 +1295,12 @@ function tfcap_generate_pdf($form_data) {
         $pdf->readOnlyTwoCol('Approval Letter Sent (Email/Post + Date):', '', 'Customer Managed By:', '');
 
         // FOOTER
-        $pdf->checkPage(30);
+        $pdf->checkPage(40);
         $y = $pdf->getY() - 10;
         $pdf->line(TFCAP_PDF::MARGIN, $y, TFCAP_PDF::PAGE_W - TFCAP_PDF::MARGIN, $y, 0.5, [200, 200, 200]);
-        $pdf->text(TFCAP_PDF::MARGIN, $y - 12, 'The Fun Depot™ | ABN 63 667 911 944 | perthbouncycastlehire.com.au', 8, [102, 102, 102]);
-        $pdf->text(TFCAP_PDF::MARGIN, $y - 22, 'Generated ' . date('d/m/Y \a\t g:i A') . ' | Credit Application — ' . $company, 8, [102, 102, 102]);
+        $pdf->note('Please email the completed and signed application to bookings@thefundepot.com.au. If any section does not apply, please write "N/A" rather than leaving it blank. We will confirm your approved credit terms in writing before they take effect.');
+        $pdf->text(TFCAP_PDF::MARGIN, $y - 24, 'The Fun Depot™ | ABN 63 667 911 944 | perthbouncycastlehire.com.au', 8, [102, 102, 102]);
+        $pdf->text(TFCAP_PDF::MARGIN, $y - 34, 'Generated ' . date('d/m/Y \a\t g:i A') . ' | Credit Application — ' . $company, 8, [102, 102, 102]);
 
         // Save
         $result = file_put_contents($filepath, $pdf->build());
