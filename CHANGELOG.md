@@ -1,5 +1,10 @@
 # TFD Credit Application PDF Generator — Changelog
 
+## v1.17.4 (2026-09-16)
+- Increased signature box size from 400×150 to 450×180 to better match 1000×400 canvas
+- Box now centered better on the page (25px margin from left edge)
+- Preserves more detail from signature pad capture
+
 ## v1.17.3 (2026-09-16)
 - Added word wrapping to twoColField — long values now wrap instead of overlapping
 - Added word wrapping to fieldRow — consistent handling across all field types
