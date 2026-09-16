@@ -3,7 +3,7 @@
  * Plugin Name: Credit Application PDF
  * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.15.0
+ * Version: 1.16.0
  * Author: keithdoesmarketing.com
  * Requires PHP: 7.4
  * Requires Plugins: ninja-forms
@@ -106,6 +106,36 @@ function tfcap_check_github_update() {
     set_transient($cache_key, $result, 3600); // cache 1 hour
     return $result;
 }
+
+// ============================================================
+// FIX FROM ADDRESS — override Gmail From to use plugin setting
+// Prevents SPF failure when host sends via PHP mail()
+// ============================================================
+add_filter('wp_mail', function($args) {
+    if (empty($args['headers'])) return $args;
+
+    $from_email = tfcap_get_option('from_email', '');
+    if (!$from_email) return $args;
+
+    // Only fix emails sent by Ninja Forms (identified by X-Ninja-Forms header)
+    $has_nf_header = false;
+    foreach ((array) $args['headers'] as $h) {
+        if (stripos($h, 'X-Ninja-Forms') !== false) { $has_nf_header = true; break; }
+    }
+    if (!$has_nf_header) return $args;
+
+    // Replace From header with plugin setting
+    $site_name = get_bloginfo('name');
+
+    foreach ($args['headers'] as $i => $h) {
+        if (stripos($h, 'From:') === 0) {
+            $args['headers'][$i] = "From: {$site_name} <{$from_email}>";
+            break;
+        }
+    }
+
+    return $args;
+});
 
 // ============================================================
 // VERSION CHECKER AJAX ENDPOINT
@@ -1125,6 +1155,7 @@ add_action('admin_init', function() {
     register_setting('tfcap_settings', 'tfcap_enabled', ['type' => 'string', 'default' => 'yes']);
     register_setting('tfcap_settings', 'tfcap_attachment_mode', ['type' => 'string', 'default' => 'all']);
     register_setting('tfcap_settings', 'tfcap_admin_email', ['type' => 'string', 'default' => '']);
+    register_setting('tfcap_settings', 'tfcap_from_email', ['type' => 'string', 'default' => '']);
 });
 
 function tfcap_render_settings_page() {
@@ -1302,6 +1333,17 @@ function tfcap_render_settings_page() {
                                class="regular-text"
                                placeholder="bookings@thefundepot.com.au">
                         <p class="description">Your business email. Used to identify which notification is the admin email when "Admin only" or "Customer only" is selected above. Leave blank to treat all notifications the same.</p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <th scope="row"><label for="tfcap_from_email">From Email Address</label></th>
+                    <td>
+                        <input type="email" name="tfcap_from_email" id="tfcap_from_email"
+                               value="<?php echo esc_attr(tfcap_get_option('from_email', '')); ?>"
+                               class="regular-text"
+                               placeholder="bookings@thefundepot.com.au">
+                        <p class="description">The "From" address on notification emails. Must use your site domain (e.g. <code>bookings@gogodigital.com.au</code>) — not Gmail. Fixes email delivery failures caused by SPF checks. Leave blank to use WordPress default.</p>
                     </td>
                 </tr>
             </table>

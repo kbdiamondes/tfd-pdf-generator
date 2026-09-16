@@ -1,5 +1,10 @@
 # TFD Credit Application PDF Generator — Changelog
 
+## v1.16.0 (2026-09-16)
+- Added "From Email" setting to fix email delivery failures (SPF)
+- Forces Ninja Forms emails to send from a domain email instead of Gmail
+- Settings page now has: Admin Email (attachment filter) + From Email (sender address)
+
 ## v1.15.0 (2026-09-16)
 - Added visual version checker on settings page
 - Shows current version, latest version, and release notes
