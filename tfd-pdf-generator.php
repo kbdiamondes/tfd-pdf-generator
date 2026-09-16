@@ -3,7 +3,7 @@
  * Plugin Name: Credit Application PDF
  * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.19.6
+ * Version: 1.20.0
  * Author: keithdoesmarketing.com
  * Requires PHP: 7.0
  * Requires Plugins: ninja-forms
@@ -655,9 +655,23 @@ class TFCAP_PDF {
         $line_h = 12;
         $col_w = $mid - self::MARGIN - 8;
 
-        // Measure labels and cap at 58% of column width
-        $lbl1_w = min($col_w * 0.58, $this->measureBold($label1, 9) + 12);
-        $lbl2_w = min($col_w * 0.58, $this->measureBold($label2, 9) + 12);
+        // Measure labels — dynamic width based on actual text
+        $lbl1_measured = $this->measureBold($label1, 9) + 12;
+        $lbl2_measured = $this->measureBold($label2, 9) + 12;
+        $min_val_w = 80; // minimum space for a value
+
+        // Overflow guard: if either label is too long, drop to full-width fieldRow()
+        if ($lbl1_measured + $min_val_w > $col_w || $lbl2_measured + $min_val_w > $col_w) {
+            $this->fieldRow($label1, $value1);
+            if ($label2 !== '' && $label2 !== null) {
+                $this->fieldRow($label2, $value2);
+            }
+            return;
+        }
+
+        // Dynamic label widths: measured, capped at 55% of column
+        $lbl1_w = min($col_w * 0.55, $lbl1_measured);
+        $lbl2_w = min($col_w * 0.55, $lbl2_measured);
 
         // Column 1
         $val1_x = self::MARGIN + $lbl1_w;
@@ -855,26 +869,15 @@ class TFCAP_PDF {
             // Crop whitespace
             list($raw_out, $width, $height) = $this->cropWhitespace($raw_out, $width, $height, $channels_out, 1 + $width * $channels_out);
 
-            // Resize to fit
+            // Area-average resize (smooth, anti-aliased)
             if ($width > $max_w || $height > $max_h) {
                 $scale = min($max_w / $width, $max_h / $height);
                 $final_w = (int)floor($width * $scale);
                 $final_h = (int)floor($height * $scale);
-                $old_stride = 1 + $width * $channels_out;
-                $resized = '';
-                for ($ry = 0; $ry < $final_h; $ry++) {
-                    $src_y = (int)floor($ry / $scale);
-                    $resized .= "\x00";
-                    for ($rx = 0; $rx < $final_w; $rx++) {
-                        $src_x = (int)floor($rx / $scale);
-                        $src_off = $src_y * $old_stride + 1 + $src_x * $channels_out;
-                        $resized .= substr($raw_out, $src_off, $channels_out);
-                    }
-                }
-                $raw_out = $resized;
+                $raw_out = $this->areaAverageResize($raw_out, $width, $height, $channels_out, $final_w, $final_h);
                 $width = $final_w;
                 $height = $final_h;
-                tfcap_log("embedImage(no-alpha): resized to {$final_w}x{$final_h}");
+                tfcap_log("embedImage(no-alpha): area-average resize to {$final_w}x{$final_h}");
             } else {
                 $final_w = $width;
                 $final_h = $height;
@@ -944,29 +947,15 @@ class TFCAP_PDF {
         list($raw_out, $width, $height) = $this->cropWhitespace($raw_out, $width, $height, $channels_out, 1 + $width * $channels_out);
         // ── End crop ────────────────────────────────────────────────────────
 
-        // ── Nearest-neighbor resize ─────────────────────────────────────────
+        // ── Area-average resize (smooth, anti-aliased) ──────────────────────
         if ( $width > $max_w || $height > $max_h ) {
             $scale   = min( $max_w / $width, $max_h / $height );
             $final_w = (int) floor( $width  * $scale );
             $final_h = (int) floor( $height * $scale );
 
-            $row_stride = 1 + $width * $channels_out;
-            $resized    = '';
+            $raw_out = $this->areaAverageResize($raw_out, $width, $height, $channels_out, $final_w, $final_h);
 
-            for ( $ry = 0; $ry < $final_h; $ry++ ) {
-                $src_y    = (int) floor( $ry / $scale );
-                $resized .= "\x00"; // filter byte = None for every output row
-
-                for ( $rx = 0; $rx < $final_w; $rx++ ) {
-                    $src_x   = (int) floor( $rx / $scale );
-                    $src_off = $src_y * $row_stride + 1 + $src_x * $channels_out;
-                    $resized .= substr( $raw_out, $src_off, $channels_out );
-                }
-            }
-
-            $raw_out = $resized;
-
-            error_log( "TFCAP resize: {$width}x{$height} → {$final_w}x{$final_h} (scale={$scale})" );
+            error_log( "TFCAP area-average resize: {$width}x{$height} → {$final_w}x{$final_h} (scale={$scale})" );
 
         } else {
             $final_w = $width;
@@ -996,7 +985,7 @@ class TFCAP_PDF {
 
     // Crop whitespace from raw pixel data — returns [cropped_data, new_width, new_height]
     private function cropWhitespace($raw_out, $width, $height, $channels, $stride) {
-        $white_thresh = 250;
+        $white_thresh = 240; // lowered from 250 — preserves thin/anti-aliased strokes
         $crop_top = $crop_bottom = $crop_left = $crop_right = 0;
         $found = false;
 
@@ -1051,8 +1040,8 @@ class TFCAP_PDF {
             }
         }
 
-        // Apply crop with 8px padding
-        $pad = 8;
+        // Apply crop with 12px padding (increased from 8)
+        $pad = 12;
         $crop_top    = max(0, $crop_top - $pad);
         $crop_bottom = min($height - 1, $crop_bottom + $pad);
         $crop_left   = max(0, $crop_left - $pad);
@@ -1074,6 +1063,42 @@ class TFCAP_PDF {
         }
 
         return [$raw_out, $width, $height];
+    }
+
+    // Area-average resize — averages source pixels instead of nearest-neighbor
+    // Produces smooth, anti-aliased output instead of jagged/blurry
+    private function areaAverageResize($raw, $src_w, $src_h, $channels, $dst_w, $dst_h) {
+        $stride = 1 + $src_w * $channels;
+        $dst = '';
+        for ($ry = 0; $ry < $dst_h; $ry++) {
+            $dst .= "\x00"; // filter byte
+            $src_y0 = $ry * $src_h / $dst_h;
+            $src_y1 = ($ry + 1) * $src_h / $dst_h;
+            for ($rx = 0; $rx < $dst_w; $rx++) {
+                $src_x0 = $rx * $src_w / $dst_w;
+                $src_x1 = ($rx + 1) * $src_w / $dst_w;
+                // Average all source pixels in the rectangle
+                $sum = array_fill(0, $channels, 0);
+                $count = 0;
+                $y0 = (int)floor($src_y0);
+                $y1 = min((int)ceil($src_y1), $src_h - 1);
+                $x0 = (int)floor($src_x0);
+                $x1 = min((int)ceil($src_x1), $src_w - 1);
+                for ($sy = $y0; $sy <= $y1; $sy++) {
+                    for ($sx = $x0; $sx <= $x1; $sx++) {
+                        $off = $sy * $stride + 1 + $sx * $channels;
+                        for ($ch = 0; $ch < $channels; $ch++) {
+                            $sum[$ch] += ord($raw[$off + $ch]);
+                        }
+                        $count++;
+                    }
+                }
+                for ($ch = 0; $ch < $channels; $ch++) {
+                    $dst .= chr((int)($sum[$ch] / max($count, 1)));
+                }
+            }
+        }
+        return $dst;
     }
 
     // Embed a base64 PNG at native resolution — no resize, no quality loss

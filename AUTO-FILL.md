@@ -130,3 +130,5 @@ Paste this into the browser console on the credit application form page. It fill
 - Signatures are drawn as mock cursive
 - All checkboxes are checked
 - Script is non-destructive — refresh to clear
+
+
