@@ -3,7 +3,7 @@
  * Plugin Name: Credit Application PDF
  * Plugin URI: https://github.com/kbdiamondes/tfd-pdf-generator
  * Description: Generates a branded PDF from Ninja Forms credit application submissions and attaches it to email notifications.
- * Version: 1.14.0
+ * Version: 1.15.0
  * Author: keithdoesmarketing.com
  * Requires PHP: 7.4
  * Requires Plugins: ninja-forms
@@ -106,6 +106,32 @@ function tfcap_check_github_update() {
     set_transient($cache_key, $result, 3600); // cache 1 hour
     return $result;
 }
+
+// ============================================================
+// VERSION CHECKER AJAX ENDPOINT
+// ============================================================
+add_action('wp_ajax_tfcap_check_version', function() {
+    check_ajax_referer('tfcap_version_check', 'nonce');
+    delete_transient('tfcap_github_update'); // force fresh check
+    $remote = tfcap_check_github_update();
+    $current = tfcap_get_version();
+
+    if (!$remote) {
+        wp_send_json_success(['status' => 'error', 'message' => 'Could not reach GitHub.']);
+    }
+
+    if (version_compare($remote['version'], $current, '>')) {
+        wp_send_json_success([
+            'status'        => 'update_available',
+            'current'       => $current,
+            'latest'        => $remote['version'],
+            'url'           => $remote['url'],
+            'release_notes' => wp_strip_all_tags(substr($remote['notes'], 0, 500)),
+        ]);
+    } else {
+        wp_send_json_success(['status' => 'up_to_date', 'current' => $current]);
+    }
+});
 
 // ============================================================
 // CONFIG
@@ -1140,6 +1166,72 @@ function tfcap_render_settings_page() {
     <div class="wrap">
         <h1>Credit Application PDF Settings</h1>
         <p>Configure how the credit application PDF is generated and attached to emails.</p>
+
+        <?php
+        $current_version = tfcap_get_version();
+        $remote = tfcap_check_github_update();
+        $has_update = $remote && version_compare($remote['version'], $current_version, '>');
+        $latest_version = $remote ? $remote['version'] : '';
+        $release_url = $remote ? $remote['url'] : '';
+        $release_notes = $remote ? wp_strip_all_tags(substr($remote['notes'], 0, 300)) : '';
+        ?>
+        <style>
+            .tfcap-version-bar{display:flex;align-items:center;gap:16px;padding:14px 18px;border-radius:8px;margin:16px 0 20px;font-size:14px;line-height:1.5}
+            .tfcap-version-bar.up-to-date{background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32}
+            .tfcap-version-bar.update-available{background:#fff3e0;border:1px solid #ffcc80;color:#e65100}
+            .tfcap-version-bar.checking{background:#e3f2fd;border:1px solid #90caf9;color:#1565c0}
+            .tfcap-version-bar.error{background:#fce4ec;border:1px solid #ef9a9a;color:#c62828}
+            .tfcap-version-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:4px;font-weight:600;font-size:13px;white-space:nowrap}
+            .tfcap-version-badge.current{background:rgba(0,0,0,.08)}
+            .tfcap-version-badge.latest{background:#ff9800;color:#fff}
+            .tfcap-version-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:5px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
+            .tfcap-version-btn.primary{background:#1976d2;color:#fff}.tfcap-version-btn.primary:hover{background:#1565c0}
+            .tfcap-version-btn.secondary{background:rgba(0,0,0,.06);color:#333}.tfcap-version-btn.secondary:hover{background:rgba(0,0,0,.1)}
+            .tfcap-version-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(0,0,0,.15);border-top-color:#1976d2;border-radius:50%;animation:tfcap-spin .6s linear infinite}
+            @keyframes tfcap-spin{to{transform:rotate(360deg)}}
+            .tfcap-version-notes{margin-top:8px;font-size:12px;opacity:.8;max-height:60px;overflow:hidden}
+        </style>
+        <div id="tfcap-version-bar" class="tfcap-version-bar <?php echo $has_update ? 'update-available' : 'up-to-date'; ?>">
+            <div style="flex:1">
+                <strong>Plugin Version</strong>
+                <span class="tfcap-version-badge current">v<?php echo esc_html($current_version); ?></span>
+                <?php if ($has_update) : ?>
+                    <span style="margin:0 4px">&rarr;</span>
+                    <span class="tfcap-version-badge latest">v<?php echo esc_html($latest_version); ?> available</span>
+                    <?php if ($release_notes) : ?>
+                        <div class="tfcap-version-notes"><?php echo esc_html($release_notes); ?></div>
+                    <?php endif; ?>
+                <?php else : ?>
+                    <span style="margin-left:8px;opacity:.7">&#10003; Up to date</span>
+                <?php endif; ?>
+            </div>
+            <div>
+                <?php if ($has_update) : ?>
+                    <a href="<?php echo esc_url(admin_url('plugins.php')); ?>" class="tfcap-version-btn primary">Update Now</a>
+                <?php endif; ?>
+                <button type="button" id="tfcap-check-btn" class="tfcap-version-btn secondary" onclick="tfcapCheckVersion()">
+                    <span id="tfcap-check-icon">&#8635;</span> Check for Updates
+                </button>
+            </div>
+        </div>
+        <script>
+        function tfcapCheckVersion(){
+            var btn=document.getElementById('tfcap-check-btn'),
+                icon=document.getElementById('tfcap-check-icon'),
+                bar=document.getElementById('tfcap-version-bar');
+            btn.disabled=true;icon.innerHTML='<span class="tfcap-version-spinner"></span>';
+            bar.className='tfcap-version-bar checking';
+            bar.querySelector('div:first-child').innerHTML='<strong>Checking for updates...</strong>';
+            jQuery.post(ajaxurl,{action:'tfcap_check_version',nonce:'<?php echo wp_create_nonce('tfcap_version_check'); ?>'},function(r){
+                btn.disabled=false;icon.innerHTML='&#8635;';
+                if(!r||!r.data){bar.className='tfcap-version-bar error';bar.querySelector('div:first-child').innerHTML='<strong>Error</strong> Could not check for updates.';return;}
+                var d=r.data;
+                if(d.status==='up_to_date'){bar.className='tfcap-version-bar up-to-date';bar.querySelector('div:first-child').innerHTML='<strong>Plugin Version</strong> <span class="tfcap-version-badge current">v'+d.current+'</span> <span style="margin-left:8px;opacity:.7">&#10003; Up to date</span>';}
+                else if(d.status==='update_available'){bar.className='tfcap-version-bar update-available';bar.querySelector('div:first-child').innerHTML='<strong>Plugin Version</strong> <span class="tfcap-version-badge current">v'+d.current+'</span> <span style="margin:0 4px">&rarr;</span> <span class="tfcap-version-badge latest">v'+d.latest+' available</span>'+(d.release_notes?'<div class="tfcap-version-notes">'+d.release_notes+'</div>':'')+'<div style="margin-top:8px"><a href="<?php echo esc_url(admin_url("plugins.php")); ?>" class="tfcap-version-btn primary">Update Now</a></div>';}
+                else{bar.className='tfcap-version-bar error';bar.querySelector('div:first-child').innerHTML='<strong>Error</strong> '+(d.message||'Could not check for updates.');}
+            }).fail(function(){btn.disabled=false;icon.innerHTML='&#8635;';bar.className='tfcap-version-bar error';bar.querySelector('div:first-child').innerHTML='<strong>Error</strong> Request failed.';});
+        }
+        </script>
 
         <form method="post" action="options.php">
             <?php settings_fields('tfcap_settings'); ?>

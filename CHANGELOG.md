@@ -1,5 +1,12 @@
 # TFD Credit Application PDF Generator — Changelog
 
+## v1.15.0 (2026-09-16)
+- Added visual version checker on settings page
+- Shows current version, latest version, and release notes
+- "Check for Updates" button with spinner animation
+- Color-coded status: green (up to date), orange (update available), blue (checking), red (error)
+- AJAX endpoint for live version checking without page reload
+
 ## v1.14.0 (2026-09-16)
 - Added GitHub auto-updater — pushes to GitHub releases auto-appear in WP admin
 - Works with public repos out of the box
